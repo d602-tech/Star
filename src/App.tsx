@@ -30,28 +30,48 @@ type Result = {
 const GAS_URL = (import.meta as any).env.VITE_GAS_URL || '';
 
 export default function App() {
+  const [systemAuth, setSystemAuth] = useState<'admin' | 'voter' | null>(null);
   const [user, setUser] = useState<Committee | null>(null);
-  const [view, setView] = useState<'login' | 'vote' | 'results' | 'admin_candidates' | 'admin_committees'>('login');
+  const [view, setView] = useState<'vote' | 'results' | 'admin_candidates' | 'admin_committees' | ''>('');
 
   useEffect(() => {
+    const savedAuth = localStorage.getItem('system_auth');
     const savedUser = localStorage.getItem('committee_user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      setView(parsedUser.login_code === 'ADMIN' ? 'admin_candidates' : 'vote');
+    
+    if (savedAuth === 'admin') {
+      setSystemAuth('admin');
+      setUser({ id: 0, department: '系統', name: '管理員', login_code: 'ADMIN' });
+      setView('results');
+    } else if (savedAuth === 'voter' && savedUser) {
+      setSystemAuth('voter');
+      setUser(JSON.parse(savedUser));
+      setView('vote');
     }
   }, []);
 
-  const handleLogin = (committee: Committee) => {
+  const handleSystemAuth = (role: 'admin' | 'voter') => {
+    setSystemAuth(role);
+    if (role === 'admin') {
+      const adminUser = { id: 0, department: '系統', name: '管理員', login_code: 'ADMIN' };
+      setUser(adminUser);
+      localStorage.setItem('system_auth', 'admin');
+      setView('results');
+    }
+  };
+
+  const handleVoterLogin = (committee: Committee) => {
     setUser(committee);
+    localStorage.setItem('system_auth', 'voter');
     localStorage.setItem('committee_user', JSON.stringify(committee));
-    setView(committee.login_code === 'ADMIN' ? 'admin_candidates' : 'vote');
+    setView('vote');
   };
 
   const handleLogout = () => {
     setUser(null);
+    setSystemAuth(null);
+    localStorage.removeItem('system_auth');
     localStorage.removeItem('committee_user');
-    setView('login');
+    setView('');
   };
 
   return (
@@ -114,46 +134,31 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        {view === 'login' && <Login onLogin={handleLogin} />}
-        {view === 'vote' && user && <Evaluation user={user} />}
-        {view === 'results' && user?.login_code === 'ADMIN' && <Results />}
-        {view === 'admin_candidates' && user?.login_code === 'ADMIN' && <AdminCandidates />}
-        {view === 'admin_committees' && user?.login_code === 'ADMIN' && <AdminCommittees />}
+        {!systemAuth && <SystemLogin onAuth={handleSystemAuth} />}
+        {systemAuth === 'voter' && !user && <VoterVerification onLogin={handleVoterLogin} onBack={() => setSystemAuth(null)} />}
+        {user && view === 'vote' && <Evaluation user={user} />}
+        {user?.login_code === 'ADMIN' && view === 'results' && <Results />}
+        {user?.login_code === 'ADMIN' && view === 'admin_candidates' && <AdminCandidates />}
+        {user?.login_code === 'ADMIN' && view === 'admin_committees' && <AdminCommittees />}
       </main>
     </div>
   );
 }
 
-function Login({ onLogin }: { onLogin: (user: Committee) => void }) {
-  const [committees, setCommittees] = useState<Committee[]>([]);
-  const [selectedName, setSelectedName] = useState('');
+function SystemLogin({ onAuth }: { onAuth: (role: 'admin' | 'voter') => void }) {
+  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetch(`${GAS_URL}?action=getCommittees`)
-      .then(res => res.json())
-      .then(data => {
-        setCommittees(data);
-        if (data.length > 0) setSelectedName(data[0].name);
-      });
-  }, []);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'login', name: selectedName, login_code: password })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        onLogin(data.committee);
-      } else {
-        setError(data.message || '密碼錯誤，請重新輸入。');
-      }
-    })
-    .catch(() => setError('登入發生錯誤'));
+    if (account === 'admin' && password === 'ad') {
+      onAuth('admin');
+    } else if (account === 'vote' && password === '0505') {
+      onAuth('voter');
+    } else {
+      setError('系統帳號或密碼錯誤');
+    }
   };
 
   return (
@@ -162,45 +167,153 @@ function Login({ onLogin }: { onLogin: (user: Committee) => void }) {
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <LogIn className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800">投票登入</h2>
-        <p className="text-slate-500 mt-2">請選擇您的部門與姓名並輸入密碼</p>
+        <h2 className="text-2xl font-bold text-slate-800">系統登入</h2>
+        <p className="text-slate-500 mt-2">請輸入系統存取帳號與密碼</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">部門 委員姓名</label>
-          <select 
-            value={selectedName}
-            onChange={(e) => setSelectedName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50"
-          >
-            {committees.map(c => (
-              <option key={c.id} value={c.name}>{c.department ? `${c.department} ` : ''}{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">登入代號(密碼)</label>
+          <label className="block text-sm font-medium text-slate-700 mb-2">帳號</label>
           <input 
             type="text"
-            inputMode="numeric"
-            pattern="\d*"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50"
-            placeholder="請輸入數字代號"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50"
             required
           />
         </div>
-
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">密碼</label>
+          <input 
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-slate-50"
+            required
+          />
+        </div>
         {error && <p className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-lg">{error}</p>}
+        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-lg">
+          進入系統
+        </button>
+      </form>
+    </div>
+  );
+}
 
-        <button 
-          type="submit"
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-lg"
-        >
-          投票登入
+function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => void, onBack: () => void }) {
+  const [committees, setCommittees] = useState<Committee[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedName, setSelectedName] = useState('');
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${GAS_URL}?action=getCommittees`)
+      .then(res => res.json())
+      .then(data => {
+        const validCommittees = data.filter((c: Committee) => c.login_code !== 'ADMIN');
+        setCommittees(validCommittees);
+        
+        const depts = Array.from(new Set(validCommittees.map((c: Committee) => c.department).filter(Boolean))) as string[];
+        setDepartments(depts);
+        
+        if (depts.length > 0) {
+          setSelectedDept(depts[0]);
+          const firstDeptUsers = validCommittees.filter((c: Committee) => c.department === depts[0]);
+          if (firstDeptUsers.length > 0) setSelectedName(firstDeptUsers[0].name);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setError('無法連線到伺服器，請檢查 GAS URL 是否正確。');
+        setLoading(false);
+      });
+  }, []);
+
+  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const dept = e.target.value;
+    setSelectedDept(dept);
+    const deptUsers = committees.filter(c => c.department === dept);
+    if (deptUsers.length > 0) setSelectedName(deptUsers[0].name);
+    else setSelectedName('');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', name: selectedName, login_code: code })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        onLogin(data.committee);
+      } else {
+        setError(data.message || '姓名代號錯誤，請重新輸入。');
+      }
+    })
+    .catch(() => setError('驗證發生錯誤'));
+  };
+
+  if (loading) return <div className="text-center py-12 text-slate-500">載入委員資料中...</div>;
+
+  const currentDeptUsers = committees.filter(c => c.department === selectedDept);
+
+  return (
+    <div className="max-w-md mx-auto mt-12 bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative">
+      <button onClick={onBack} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      </button>
+      
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800">委員身分確認</h2>
+        <p className="text-slate-500 mt-2">請選擇您的部門與姓名，並輸入代號</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">部門</label>
+          <select 
+            value={selectedDept} 
+            onChange={handleDeptChange} 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
+          >
+            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">委員姓名</label>
+          <select 
+            value={selectedName} 
+            onChange={(e) => setSelectedName(e.target.value)} 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
+          >
+            {currentDeptUsers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">姓名代號</label>
+          <input 
+            type="text" 
+            inputMode="numeric" 
+            pattern="\d*" 
+            value={code} 
+            onChange={(e) => setCode(e.target.value)} 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50" 
+            placeholder="請輸入您的專屬數字代號" 
+            required 
+          />
+        </div>
+        {error && <p className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-lg">{error}</p>}
+        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors text-lg mt-2">
+          確認身分並開始投票
         </button>
       </form>
     </div>
