@@ -5,7 +5,7 @@
 // ── 管理員密碼 Hash（SHA-256）──────────────────────────
 // 預設密碼: "Admin@2024"
 // 若要更換，在 GAS 控制台執行: Logger.log(hashSHA256('新密碼'))，然後貼在下方
-const ADMIN_PWD_HASH = '3c5a0fdbcf55aaa8d821600f0e7c3089f8035c0ef65c6ed32214c326e4753b84'; // 密碼：投票
+const ADMIN_PWD_HASH = 'b3f0f5188c6cbe2fe5f42dcda52effb5f4df2bd15f82b41fdb2a88dba381d3c0'; // 密碼已更新
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 工具：SHA-256 Hash
