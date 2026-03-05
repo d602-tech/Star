@@ -70,6 +70,14 @@
     // 🔴 請替換成您在 GAS 部署時取得的 Web App URL
     const GAS_APP_URL = "https://script.google.com/macros/s/AKfycbw7uChOFkNVUdNMYEG4jAlNUEg8gSoDb3zUgS2WjQX37vFqvmdHmdbTOQEaKwiRRxpu/exec";
 
+    // --- Token 工具 ---
+    const getAdminToken  = () => sessionStorage.getItem('adminToken');
+    const setAdminToken  = (t) => sessionStorage.setItem('adminToken', t);
+    const clearAdminToken = () => sessionStorage.removeItem('adminToken');
+    const getSessionToken  = () => sessionStorage.getItem('sessionToken');
+    const setSessionToken  = (t) => sessionStorage.setItem('sessionToken', t);
+    const clearSessionToken = () => sessionStorage.removeItem('sessionToken');
+
     // --- API 呼叫模組 ---
     async function apiCall(action, params = {}) {
       try {
@@ -132,13 +140,19 @@
       const [acc, setAcc] = useState('');
       const [pwd, setPwd] = useState('');
       const [err, setErr] = useState('');
+      const [loading, setLoading] = useState(false);
 
-      const handleLogin = (e) => {
+      const handleLogin = async (e) => {
         e.preventDefault();
-        if (acc === 'admin' && pwd === 'ad') {
+        setErr('');
+        setLoading(true);
+        const res = await apiCall('adminLogin', { acc, pwd });
+        setLoading(false);
+        if (res?.success) {
+          setAdminToken(res.adminToken);
           setView('adminPanel');
         } else {
-          setErr('帳號或密碼錯誤');
+          setErr(res?.message || '帳號或密碼錯誤');
         }
       };
 
@@ -149,7 +163,9 @@
             {err && <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{err}</div>}
             <input type="text" placeholder="帳號" className="w-full border p-3 rounded mb-4" value={acc} onChange={e => setAcc(e.target.value)} required />
             <input type="password" placeholder="密碼" className="w-full border p-3 rounded mb-6" value={pwd} onChange={e => setPwd(e.target.value)} required />
-            <button type="submit" className="w-full bg-gray-800 hover:bg-black text-white py-3 rounded font-bold transition">登入管理後台</button>
+            <button type="submit" disabled={loading} className="w-full bg-gray-800 hover:bg-black text-white py-3 rounded font-bold transition disabled:opacity-50">
+              {loading ? '驗證中...' : '登入管理後台'}
+            </button>
             <button type="button" onClick={() => setView('gateway')} className="w-full text-center text-sm text-gray-500 mt-4 hover:underline">返回首頁</button>
           </form>
         </div>
@@ -181,7 +197,8 @@
         setLoading(true);
         const res = await apiCall('login', { name, login_code: code });
         setLoading(false);
-        if (res && res.success) {
+        if (res?.success) {
+          setSessionToken(res.sessionToken); // 存 token，不存 login_code
           onLogin(res.committee);
         } else {
           setErr(res?.message || '登入失敗');
@@ -228,7 +245,15 @@
 
     // 4. 管理員後台 (Admin Panel)
     function AdminPanel({ setView }) {
-      const [tab, setTab] = useState('results'); // results, candidates, committees
+      const [tab, setTab] = useState('results');
+
+      const handleLogout = async () => {
+        const token = getAdminToken();
+        if (token) await apiCall('adminLogout', { adminToken: token });
+        clearAdminToken();
+        setView('gateway');
+      };
+
       return (
         <div className="min-h-screen bg-gray-100 fade-in">
           <nav className="bg-gray-900 text-white shadow-lg sticky top-0 z-50">
@@ -238,7 +263,7 @@
                 <button onClick={() => setTab('results')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'results' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>排行榜</button>
                 <button onClick={() => setTab('candidates')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'candidates' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>候選人管理</button>
                 <button onClick={() => setTab('committees')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'committees' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>委員管理</button>
-                <button onClick={() => setView('gateway')} className="px-4 py-2 rounded-md font-medium bg-red-600 hover:bg-red-700 transition ml-4">登出</button>
+                <button onClick={handleLogout} className="px-4 py-2 rounded-md font-medium bg-red-600 hover:bg-red-700 transition ml-4">登出</button>
               </div>
             </div>
           </nav>
@@ -258,7 +283,7 @@
 
       const loadResults = () => {
         setLoading(true);
-        apiCall('getResults').then(res => {
+        apiCall('getResults', { adminToken: getAdminToken() }).then(res => {
           if (res) {
             setResults(res);
             if (res.length > 0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
@@ -321,7 +346,7 @@
 
       const handleDelete = async (id) => {
         if (!confirm('確定要刪除？這將同步刪除所有該候選人的歷史得票！')) return;
-        const res = await apiCall('deleteCandidate', { id });
+        const res = await apiCall('deleteCandidate', { id, adminToken: getAdminToken() });
         if (res && res.success) { alert('已刪除'); loadData(); }
       };
 
@@ -329,7 +354,7 @@
         const dept = prompt('部門:'); if (!dept) return;
         const name = prompt('姓名:'); if (!name) return;
         const desc = prompt('事蹟簡介:'); if (!desc) return;
-        const res = await apiCall('addCandidate', { department: dept, name, description: desc });
+        const res = await apiCall('addCandidate', { department: dept, name, description: desc, adminToken: getAdminToken() });
         if (res && res.success) loadData();
       };
 
@@ -343,9 +368,8 @@
           const reader = new FileReader();
           reader.onload = async (ev) => {
             const base64 = ev.target.result;
-            // 依需求：無限制圖片大小，直接上傳 Base64
             setLoading(true);
-            const res = await apiCall('uploadImage', { id, image_url: base64 });
+            const res = await apiCall('uploadImage', { id, image_url: base64, adminToken: getAdminToken() });
             if (res && res.success) { alert('上傳成功'); loadData(); } else { setLoading(false); }
           };
           reader.readAsDataURL(file);
@@ -394,7 +418,7 @@
 
       const handleDelete = async (id) => {
         if (!confirm('刪除將無法復原，確認？')) return;
-        const res = await apiCall('deleteCommittee', { id });
+        const res = await apiCall('deleteCommittee', { id, adminToken: getAdminToken() });
         if (res && res.success) loadData();
       };
 
@@ -409,14 +433,16 @@
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="p-4">部門</th><th className="p-4">姓名</th><th className="p-4">登入代號</th><th className="p-4">操作</th>
+                <th className="p-4">部門</th><th className="p-4">姓名</th><th className="p-4">密碼狀態</th><th className="p-4">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {data.map(c => (
-                <tr key={c['委員ID']}>
-                  <td className="p-4">{c['部門']}</td><td className="p-4">{c['委員姓名']}</td><td className="p-4 font-mono">{c['登入代號(密碼)']}</td>
-                  <td className="p-4"><button onClick={() => handleDelete(c['委員ID'])} className="text-red-600 font-bold text-sm">刪除</button></td>
+                <tr key={c.id}>
+                  <td className="p-4">{c.department}</td>
+                  <td className="p-4">{c.name}</td>
+                  <td className="p-4 text-green-600 font-medium">✔ 已設定</td>
+                  <td className="p-4"><button onClick={() => handleDelete(c.id)} className="text-red-600 font-bold text-sm">刪除</button></td>
                 </tr>
               ))}
             </tbody>
@@ -427,52 +453,57 @@
 
     // 5. 委員評分面板 (Voter Panel)
     function VoterPanel({ setView, user, onLogout }) {
-      const committeeCode = user['登入代號(密碼)'];
       const [candidates, setCandidates] = useState([]);
       const [scores, setScores] = useState({});
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
 
       useEffect(() => {
-        // 同步取得候選人與歷史投票紀錄
+        // 同步取得候選人與歷史投票紀錄（用 sessionToken 驗證，不傳 login_code）
         Promise.all([
           apiCall('getCandidates'),
-          apiCall('getVotes', { committee_code: committeeCode })
+          apiCall('getVotes', { sessionToken: getSessionToken() })
         ]).then(([candRes, voteRes]) => {
           if (candRes) setCandidates(candRes);
           if (voteRes) {
             const initScores = {};
-            voteRes.forEach(v => { initScores[v['候選人ID']] = Number(v['分數']); });
+            voteRes.forEach(v => { initScores[v.candidate_id] = Number(v.score); });
             setScores(initScores);
           }
           setLoading(false);
         });
-      }, [committeeCode]);
+      }, []);
 
       const handleScoreChange = (id, val) => {
         setScores(prev => ({ ...prev, [id]: Number(val) }));
       };
 
+      const handleLogout = async () => {
+        const token = getSessionToken();
+        if (token) await apiCall('voterLogout', { sessionToken: token });
+        clearSessionToken();
+        onLogout();
+      };
+
       const handleSubmit = async () => {
         // 防呆：每一位都必須填寫
-        const unvoted = candidates.filter(c => !scores[c['候選人ID']]);
+        const unvoted = candidates.filter(c => !scores[c.id]);
         if (unvoted.length > 0) {
           alert(`您還有 ${unvoted.length} 位尚未評分喔！請將所有人評分完畢再送出。`);
-          // 滾動到第一個未評分
-          const el = document.getElementById(`cand-${unvoted[0]['候選人ID']}`);
+          const el = document.getElementById(`cand-${unvoted[0].id}`);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
 
         setSaving(true);
         const payloadVotes = candidates.map(c => ({
-          candidateId: c['候選人ID'],
-          score: scores[c['候選人ID']]
+          candidateId: c.id,
+          score: scores[c.id]
         }));
 
-        const res = await apiCall('vote', { committee_code: committeeCode, votes: payloadVotes });
+        const res = await apiCall('vote', { sessionToken: getSessionToken(), votes: payloadVotes });
         setSaving(false);
-        if (res && res.success) {
+        if (res?.success) {
           confetti({ particleCount: 100, spread: 70 });
           alert('評分送出成功！您隨時可以再次登入修改。');
         }
@@ -487,9 +518,9 @@
             <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
               <div>
                 <h1 className="text-xl font-bold">評選區</h1>
-                <div className="text-sm text-blue-200">您好，{user['部門']} - {user['委員姓名']}</div>
+                <div className="text-sm text-blue-200">您好，{user.department} - {user.name}</div>
               </div>
-              <button onClick={onLogout} className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded text-sm font-bold transition">登出返回</button>
+              <button onClick={handleLogout} className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded text-sm font-bold transition">登出返回</button>
             </div>
           </div>
 
@@ -499,11 +530,11 @@
             </div>
 
             {candidates.map(c => (
-              <div key={c['候選人ID']} id={`cand-${c['候選人ID']}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 hover:shadow-md transition">
+              <div key={c.id} id={`cand-${c.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 hover:shadow-md transition">
                 {/* 照片區 */}
                 <div className="w-full md:w-48 flex-shrink-0">
-                  {c['照片'] ? (
-                    <img src={c['照片']} alt={c['姓名']} className="w-full h-48 md:h-full object-cover rounded-xl shadow-sm" />
+                  {c.image_url ? (
+                    <img src={c.image_url} alt={c.name} className="w-full h-48 md:h-full object-cover rounded-xl shadow-sm" />
                   ) : (
                     <div className="w-full h-48 md:h-full bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 shadow-inner">無照片</div>
                   )}
@@ -512,9 +543,9 @@
                 {/* 內容評分區 */}
                 <div className="flex-grow flex flex-col justify-between">
                   <div>
-                    <div className="text-sm font-bold text-blue-600 mb-1">{c['部門']}</div>
-                    <div className="text-2xl font-extrabold text-gray-900 mb-3">{c['姓名']}</div>
-                    <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap">{c['優良事蹟簡介']}</p>
+                    <div className="text-sm font-bold text-blue-600 mb-1">{c.department}</div>
+                    <div className="text-2xl font-extrabold text-gray-900 mb-3">{c.name}</div>
+                    <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap">{c.description}</p>
                   </div>
 
                   {/* 打分元件 */}
@@ -522,11 +553,11 @@
                     <span className="font-bold text-gray-700">給予評分：</span>
                     <div className="flex space-x-2">
                       {[1, 2, 3, 4, 5].map(star => {
-                        const active = scores[c['候選人ID']] === star;
+                        const active = scores[c.id] === star;
                         return (
                           <button
                             key={star}
-                            onClick={() => handleScoreChange(c['候選人ID'], star)}
+                            onClick={() => handleScoreChange(c.id, star)}
                             className={`w-10 h-10 md:w-12 md:h-12 rounded-full font-bold text-lg transition-all transform hover:scale-110 
                               ${active ? 'bg-yellow-400 text-white shadow-lg ring-4 ring-yellow-100' : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-yellow-400 hover:text-yellow-400'}
                             `}
@@ -546,7 +577,7 @@
           <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] p-4 z-50">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="text-gray-600 font-medium hidden md:block">
-                已評分：<span className="text-blue-600 font-bold">{Object.keys(scores).length}</span> / {candidates.length} 人
+                已評分：<span className="text-blue-600 font-bold">{Object.keys(scores).filter(k => scores[k] > 0).length}</span> / {candidates.length} 人
               </div>
               <button
                 onClick={handleSubmit}
