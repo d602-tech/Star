@@ -5,14 +5,14 @@
 // ── 管理員密碼 Hash（SHA-256）──────────────────────────
 // 預設密碼: "Admin@2024"
 // 若要更換，在 GAS 控制台執行: Logger.log(hashSHA256('新密碼'))，然後貼在下方
-const ADMIN_PWD_HASH = '3a6a3a6e9a0a0b5a9c3a2b10df02c8b7e3a2e4d5f6c7b8a9d0e1f2a3b4c5d6e'; // 請換成你自己的 hash!
+const ADMIN_PWD_HASH = '3c5a0fdbcf55aaa8d821600f0e7c3089f8035c0ef65c6ed32214c326e4753b84'; // 密碼：投票
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 工具：SHA-256 Hash
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function hashSHA256(str) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str, Utilities.Charset.UTF_8);
-  return bytes.map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+  return bytes.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -245,45 +245,45 @@ function getSheetData(sheetName) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 資料 Headers & Mappers
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-var COMMITTEE_HEADERS  = ['委員ID', '部門', '委員姓名', '登入代號(密碼)'];
-var CANDIDATE_HEADERS  = ['候選人ID', '部門', '姓名', '優良事蹟簡介', '照片'];
-var VOTE_HEADERS       = ['投票ID', '委員代號', '候選人ID', '分數'];
+var COMMITTEE_HEADERS = ['委員ID', '部門', '委員姓名', '登入代號(密碼)'];
+var CANDIDATE_HEADERS = ['候選人ID', '部門', '姓名', '優良事蹟簡介', '照片'];
+var VOTE_HEADERS = ['投票ID', '委員代號', '候選人ID', '分數'];
 
 // 委員：對外不回傳 login_code 明文
 function mapCommitteePublic(row) {
   return {
-    id:         row['委員ID'],
+    id: row['委員ID'],
     department: row['部門'],
-    name:       row['委員姓名']
+    name: row['委員姓名']
     // login_code 不回傳！
   };
 }
 
 function mapCommitteeInternal(row) {
   return {
-    id:         row['委員ID'],
+    id: row['委員ID'],
     department: row['部門'],
-    name:       row['委員姓名'],
+    name: row['委員姓名'],
     login_code: row['登入代號(密碼)'] ? row['登入代號(密碼)'].toString() : ''
   };
 }
 
 function mapCandidate(row) {
   return {
-    id:          row['候選人ID'],
-    department:  row['部門'],
-    name:        row['姓名'],
+    id: row['候選人ID'],
+    department: row['部門'],
+    name: row['姓名'],
     description: row['優良事蹟簡介'],
-    image_url:   row['照片'] || null
+    image_url: row['照片'] || null
   };
 }
 
 function mapVote(row) {
   return {
-    id:             row['投票ID'],
+    id: row['投票ID'],
     committee_code: row['委員代號'] ? row['委員代號'].toString() : '',
-    candidate_id:   row['候選人ID'],
-    score:          row['分數']
+    candidate_id: row['候選人ID'],
+    score: row['分數']
   };
 }
 
@@ -307,7 +307,7 @@ function login(name, login_code) {
   checkRateLimit(key);
 
   var committees = getSheetData('委員').map(mapCommitteeInternal);
-  var user = committees.find(function(c) {
+  var user = committees.find(function (c) {
     return c.name === name && c.login_code === login_code;
   });
 
@@ -323,9 +323,9 @@ function login(name, login_code) {
     success: true,
     sessionToken: sessionToken,
     committee: {
-      id:         user.id,
+      id: user.id,
       department: user.department,
-      name:       user.name
+      name: user.name
       // login_code 不回傳！
     }
   };
@@ -354,7 +354,7 @@ function adminLogin(acc, pwd) {
 function getVotes(sessionToken) {
   var sess = verifySession(sessionToken);
   var data = getSheetData('投票紀錄').map(mapVote);
-  return data.filter(function(v) { return v.committee_code === sess.code; });
+  return data.filter(function (v) { return v.committee_code === sess.code; });
 }
 
 function submitVote(sessionToken, votes) {
@@ -373,7 +373,7 @@ function submitVote(sessionToken, votes) {
   }
 
   // 新增新紀錄
-  votes.forEach(function(vote) {
+  votes.forEach(function (vote) {
     sheet.appendRow([
       new Date().getTime() + Math.floor(Math.random() * 1000),
       committeeCode,
@@ -398,23 +398,23 @@ function getResults() {
   var candidates = getCandidates();
   var votes = getSheetData('投票紀錄').map(mapVote);
 
-  var results = candidates.map(function(candidate) {
-    var cv = votes.filter(function(v) { return v.candidate_id == candidate.id; });
-    var total = cv.reduce(function(s, v) { return s + Number(v.score); }, 0);
+  var results = candidates.map(function (candidate) {
+    var cv = votes.filter(function (v) { return v.candidate_id == candidate.id; });
+    var total = cv.reduce(function (s, v) { return s + Number(v.score); }, 0);
     var avg = cv.length > 0 ? (total / cv.length).toFixed(2) : '0.00';
     return {
-      id:          candidate.id,
-      department:  candidate.department,
-      name:        candidate.name,
+      id: candidate.id,
+      department: candidate.department,
+      name: candidate.name,
       description: candidate.description,
-      image_url:   candidate.image_url,
-      totalScore:  total,
-      voteCount:   cv.length,
-      average:     avg
+      image_url: candidate.image_url,
+      totalScore: total,
+      voteCount: cv.length,
+      average: avg
     };
   });
 
-  results.sort(function(a, b) { return b.totalScore - a.totalScore; });
+  results.sort(function (a, b) { return b.totalScore - a.totalScore; });
   return results;
 }
 
@@ -480,12 +480,12 @@ function uploadImage(id, image_url) {
 
 // 委員管理：前端顯示用，密碼欄位遮罩
 function getCommitteesAdmin() {
-  return getSheetData('委員').map(function(row) {
+  return getSheetData('委員').map(function (row) {
     return {
-      id:         row['委員ID'],
+      id: row['委員ID'],
       department: row['部門'],
-      name:       row['委員姓名'],
-      hasCode:    !!(row['登入代號(密碼)']) // 只告知有沒有設定，不回傳明文
+      name: row['委員姓名'],
+      hasCode: !!(row['登入代號(密碼)']) // 只告知有沒有設定，不回傳明文
     };
   });
 }
@@ -530,8 +530,8 @@ function deleteCommittee(id) {
 // 初始化
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function setupSheets() {
-  getSheet('委員',     COMMITTEE_HEADERS);
-  getSheet('候選人',   CANDIDATE_HEADERS);
+  getSheet('委員', COMMITTEE_HEADERS);
+  getSheet('候選人', CANDIDATE_HEADERS);
   getSheet('投票紀錄', VOTE_HEADERS);
   return { success: true, message: '工作表初始化完成' };
 }
