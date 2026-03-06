@@ -168,6 +168,10 @@ function handleRequest(e, method) {
         verifyAdmin(data.adminToken);
         result = uploadImage(data.id, data.image_url);
         break;
+      case 'getVotingStatus':
+        verifyAdmin(data.adminToken);
+        result = getVotingStatus();
+        break;
       case 'addCommittee':
         verifyAdmin(data.adminToken);
         result = addCommittee(data);
@@ -416,6 +420,28 @@ function getResults() {
 
   results.sort(function (a, b) { return b.totalScore - a.totalScore; });
   return results;
+}
+
+function getVotingStatus() {
+  var committees = getSheetData('委員').map(mapCommitteeInternal);
+  var votes = getSheetData('投票紀錄').map(mapVote);
+  var candidates = getCandidates();
+
+  var statusList = committees.map(function (c) {
+    // 找出該委員的所有投票
+    var cv = votes.filter(function (v) { return String(v.committee_code) === String(c.login_code); });
+
+    return {
+      id: c.id,
+      department: c.department,
+      name: c.name,
+      hasVoted: cv.length > 0,
+      votedCount: cv.length,
+      totalCandidates: candidates.length
+    };
+  });
+
+  return statusList;
 }
 
 function addCandidate(data) {
