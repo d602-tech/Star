@@ -431,13 +431,23 @@ function getVotingStatus() {
     // 找出該委員的所有投票
     var cv = votes.filter(function (v) { return String(v.committee_code) === String(c.login_code); });
 
+    // 整理投票明細，把候選人名稱跟分數配對
+    var voteDetails = cv.map(function (v) {
+      var candidate = candidates.find(function (cand) { return String(cand.id) === String(v.candidate_id); });
+      return {
+        candidateName: candidate ? candidate.name : '未知候選人',
+        score: parseInt(v.score, 10) || 0
+      };
+    });
+
     return {
       id: c.id,
       department: c.department,
       name: c.name,
       hasVoted: cv.length > 0,
       votedCount: cv.length,
-      totalCandidates: candidates.length
+      totalCandidates: candidates.length,
+      voteDetails: voteDetails // 新增投票明細
     };
   });
 

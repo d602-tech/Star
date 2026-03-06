@@ -290,15 +290,33 @@
             setResults(res);
             if (res.length > 0) {
               try {
+                // 原本的 1~3 名音樂
                 const fanfare = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
                 const applause = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
+                // 為 4~6 名新增另一首音樂
+                const successChime = new Audio('https://assets.mixkit.co/active_storage/sfx/1430/1430-preview.mp3');
+
                 fanfare.volume = 0.8;
                 applause.volume = 0.5;
+                successChime.volume = 0.7;
+
+                // 播放第一段音樂（1~3名）
                 fanfare.play().catch(e => console.log('Audio error:', e));
+
+                // 稍微延遲播放掌聲
                 setTimeout(() => applause.play().catch(e => { }), 1000);
+
+                // 更久之後為 4~6 名播放歡慶音樂
+                setTimeout(() => successChime.play().catch(e => { }), 3500);
+
               } catch (e) { }
+
+              // 第一次第一波彩帶
               confetti({ particleCount: 300, spread: 120, origin: { y: 0.6 }, zIndex: 100 });
+              // 第二波彩帶
               setTimeout(() => confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 100 }), 1500);
+              // 第三波代表 4~6 名的彩帶
+              setTimeout(() => confetti({ particleCount: 150, spread: 80, origin: { y: 0.8 }, zIndex: 100 }), 3500);
             }
           }
           setLoading(false);
@@ -410,27 +428,35 @@
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {others.map((r, i) => (
-                      <tr key={r.id} className="hover:bg-white/50 transition-colors duration-200">
-                        <td className="px-8 py-5 whitespace-nowrap font-black text-gray-800 text-lg">第 <span className="text-2xl">{i + 4}</span> 名</td>
-                        <td className="px-8 py-5 whitespace-nowrap">
-                          {r.image_url ? (
-                            <img src={r.image_url} className="w-14 h-14 rounded-full object-cover border-2 border-[#d5cec8] shadow-sm transform transition hover:scale-110" alt={r.name} />
-                          ) : (
-                            <div className="w-14 h-14 rounded-full bg-[#f0ece9] border-2 border-[#d5cec8] flex items-center justify-center text-sm text-gray-500 font-bold shadow-sm">無</div>
-                          )}
-                        </td>
-                        <td className="px-8 py-5">
-                          <div className="font-black text-xl text-gray-900 mb-1">{r.name}</div>
-                          <div className="text-sm font-medium text-gray-600">{r.department}</div>
-                        </td>
-                        <td className="px-8 py-5 font-black text-blue-800 text-2xl drop-shadow-sm">{r.totalScore}</td>
-                        <td className="px-8 py-5">
-                          <span className="inline-block bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded-full shadow mb-1">獲得 {r.voteCount} 票</span>
-                          <div className="text-sm text-gray-600 font-medium">平均分數: <span className="font-bold">{r.average}</span></div>
-                        </td>
-                      </tr>
-                    ))}
+                    {others.map((r, i) => {
+                      // 第 4-6 名 (i = 0, 1, 2) 因為 others 是從 3 開始 slice
+                      const isRank4to6 = i < 3;
+                      const sizeClass = isRank4to6 ? "w-20 h-20" : "w-14 h-14";
+                      const rankClass = isRank4to6 ? "text-3xl text-yellow-600 drop-shadow-sm font-black" : "text-2xl font-black";
+                      const bgRowClass = isRank4to6 ? "bg-yellow-50/50 hover:bg-yellow-100/50" : "hover:bg-white/50";
+
+                      return (
+                        <tr key={r.id} className={`${bgRowClass} transition-colors duration-200`}>
+                          <td className="px-8 py-5 whitespace-nowrap font-black text-gray-800 text-lg">第 <span className={rankClass}>{i + 4}</span> 名</td>
+                          <td className="px-8 py-5 whitespace-nowrap">
+                            {r.image_url ? (
+                              <img src={r.image_url} className={`${sizeClass} rounded-full object-cover border-2 border-[#d5cec8] shadow-sm transform transition hover:scale-110`} alt={r.name} />
+                            ) : (
+                              <div className={`${sizeClass} rounded-full bg-[#f0ece9] border-2 border-[#d5cec8] flex items-center justify-center text-sm text-gray-500 font-bold shadow-sm`}>無</div>
+                            )}
+                          </td>
+                          <td className="px-8 py-5">
+                            <div className={`font-black text-gray-900 mb-1 ${isRank4to6 ? "text-2xl text-yellow-800" : "text-xl"}`}>{r.name}</div>
+                            <div className={`font-medium ${isRank4to6 ? "text-yellow-700 text-base" : "text-gray-600 text-sm"}`}>{r.department}</div>
+                          </td>
+                          <td className={`px-8 py-5 font-black text-blue-800 drop-shadow-sm ${isRank4to6 ? "text-3xl text-blue-900" : "text-2xl"}`}>{r.totalScore}</td>
+                          <td className="px-8 py-5">
+                            <span className="inline-block bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded-full shadow mb-1">獲得 {r.voteCount} 票</span>
+                            <div className="text-sm text-gray-600 font-medium">平均分數: <span className="font-bold">{r.average}</span></div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -444,6 +470,7 @@
     function AdminVotingStatus() {
       const [data, setData] = useState([]);
       const [loading, setLoading] = useState(true);
+      const [selectedVoter, setSelectedVoter] = useState(null);
 
       const loadData = () => { setLoading(true); apiCall('getVotingStatus', { adminToken: getAdminToken() }).then(res => { if (res) setData(res); setLoading(false); }); };
       useEffect(() => { loadData(); }, []);
@@ -454,11 +481,11 @@
       const notVoted = data.filter(d => !d.hasVoted);
 
       return (
-        <div className="fade-in bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200">
+        <div className="fade-in bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 relative">
           <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end">
             <div>
               <h2 className="text-3xl font-bold text-gray-800 mb-2">📊 委員投票狀況監控</h2>
-              <p className="text-gray-500">即時掌握每位委員的投票進度</p>
+              <p className="text-gray-500">即時掌握每位委員的投票進度，點擊「已投票名單」可檢視各委員配分明細</p>
             </div>
             <button onClick={loadData} className="mt-4 md:mt-0 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200">🔄 重新整理資料</button>
           </div>
@@ -486,7 +513,7 @@
               <div className="p-6">
                 <ul className="space-y-3">
                   {notVoted.length === 0 ? <li className="text-gray-500 text-center py-4 font-bold">🎉 太棒了！所有委員皆已完成投票。</li> : notVoted.map(c => (
-                    <li key={c.id} className="bg-white border-2 border-red-100 p-4 rounded-lg flex justify-between items-center shadow-sm hover:border-red-300 transition">
+                    <li key={c.id} className="bg-white border-2 border-red-100 p-4 rounded-lg flex justify-between items-center shadow-sm hover:border-red-300 transition cursor-not-allowed opacity-80">
                       <div className="flex flex-col"><span className="text-sm font-bold text-gray-500">{c.department}</span><span className="text-xl font-black text-gray-800">{c.name}</span></div>
                       <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1.5 rounded-full border border-red-200">未投票 (0 / {c.totalCandidates})</span>
                     </li>
@@ -496,21 +523,69 @@
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-green-50 px-6 py-4 border-b border-green-100">
+              <div className="bg-green-50 px-6 py-4 border-b border-green-100 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-green-600 flex items-center"><span className="text-2xl mr-2">✅</span> 已投票名單 ({voted.length} 人)</h3>
+                <span className="text-xs text-green-700 font-medium">點擊查看分數明細</span>
               </div>
               <div className="p-6">
                 <ul className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                   {voted.length === 0 ? <li className="text-gray-500 text-center py-4">尚未有委員進行投票。</li> : voted.map(c => (
-                    <li key={c.id} className="bg-white border-2 border-green-100 p-4 rounded-lg flex justify-between items-center shadow-sm hover:border-green-300 transition">
-                      <div className="flex flex-col"><span className="text-sm font-bold text-gray-500">{c.department}</span><span className="text-xl font-black text-gray-800">{c.name}</span></div>
-                      <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200">進度: {c.votedCount} / {c.totalCandidates}</span>
+                    <li key={c.id} onClick={() => setSelectedVoter(c)} className="bg-white border-2 border-green-100 p-4 rounded-lg flex justify-between items-center shadow-sm hover:border-green-400 hover:shadow-md transition cursor-pointer relative group">
+                      <div className="flex flex-col"><span className="text-sm font-bold text-gray-500">{c.department}</span><span className="text-xl font-black text-gray-800 group-hover:text-green-700 transition-colors">{c.name}</span></div>
+                      <div className="flex items-center space-x-3">
+                        <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full border border-green-200">點擊看明細</span>
+                        <div className="text-green-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">➔</div>
+                      </div>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
           </div>
+
+          {/* 投票分數明細 Modal */}
+          {selectedVoter && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm shadow-2xl fade-in" onClick={() => setSelectedVoter(null)}>
+              <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-green-600 to-green-500 px-6 py-4 flex justify-between items-center text-white">
+                  <div>
+                    <h3 className="text-xl font-black">{selectedVoter.name} 的投票明細</h3>
+                    <div className="text-sm font-medium text-green-100">{selectedVoter.department} ． 共投 {selectedVoter.votedCount} 票</div>
+                  </div>
+                  <button onClick={() => setSelectedVoter(null)} className="text-white hover:text-green-200 transition p-1 bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
+                </div>
+                <div className="p-6 overflow-y-auto flex-1 bg-gray-50">
+                  {selectedVoter.voteDetails && selectedVoter.voteDetails.length > 0 ? (
+                    <div className="grid gap-3">
+                      {selectedVoter.voteDetails.map((vd, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition-shadow">
+                          <span className="font-bold text-gray-800 text-lg flex items-center">
+                            <span className="text-gray-400 font-normal text-sm w-6">{i + 1}.</span>
+                            {vd.candidateName}
+                          </span>
+                          <span className="flex items-center">
+                            <span className="flex space-x-0.5 mr-3">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <svg key={star} className={`w-6 h-6 ${star <= vd.score ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                </svg>
+                              ))}
+                            </span>
+                            <span className="font-black text-green-700 text-xl w-6 text-right">{vd.score}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-400 py-10 font-medium">尚無分數資料</div>
+                  )}
+                </div>
+                <div className="p-4 border-t border-gray-200 bg-white flex justify-end">
+                  <button onClick={() => setSelectedVoter(null)} className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-lg transition-colors shadow-sm">關閉明細</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
