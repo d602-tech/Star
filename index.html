@@ -290,26 +290,14 @@
             setResults(res);
             if (res.length > 0) {
               try {
-                // 背景音樂改為使用者提供的音樂連結
+                // 背景音樂一律使用指定的音樂連結
                 const bgm = new Audio('https://drive.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp');
-                const applause = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
-                // 為 4~6 名新增另一首音樂
-                const successChime = new Audio('https://assets.mixkit.co/active_storage/sfx/1430/1430-preview.mp3');
 
                 bgm.volume = 0.8;
-                bgm.loop = true; // 放背景音樂循環
-                applause.volume = 0.5;
-                successChime.volume = 0.7;
+                bgm.loop = true; // 設為循環播放當作背景音樂
 
                 // 播放音樂
                 bgm.play().catch(e => console.log('Audio error:', e));
-
-                // 稍微延遲播放掌聲
-                setTimeout(() => applause.play().catch(e => { }), 1000);
-
-                // 更久之後為 4~6 名播放歡慶音樂
-                setTimeout(() => successChime.play().catch(e => { }), 3500);
-
               } catch (e) { }
 
               // 第一次第一波彩帶
@@ -414,7 +402,6 @@
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-600 mt-12 relative z-10">
               <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-8 py-4 border-b border-gray-600 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-gray-200 tracking-wide">其他名次 <span className="text-sm font-normal text-gray-400 ml-2">(參賽獎: 工安激勵品)</span></h3>
-                <div className="text-gray-400 text-sm hidden md:block">以大理石紋理呈現質感的榮譽榜單</div>
               </div>
 
               <div className="overflow-x-auto relative" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/marble.png')", backgroundColor: "#fdfbfb" }}>
@@ -422,7 +409,7 @@
                   <thead className="bg-[#f0ece9] border-b-2 border-[#d5cec8]">
                     <tr>
                       <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider w-24">名次</th>
-                      <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider w-20">照片</th>
+                      <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider w-40 text-center">照片</th>
                       <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider">部門 / 姓名</th>
                       <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider">總得分</th>
                       <th className="px-8 py-4 text-sm font-black text-gray-700 uppercase tracking-wider">得票狀態</th>
@@ -432,18 +419,18 @@
                     {others.map((r, i) => {
                       // 第 4-6 名 (i = 0, 1, 2) 因為 others 是從 3 開始 slice
                       const isRank4to6 = i < 3;
-                      const sizeClass = isRank4to6 ? "w-28 h-28 md:w-32 md:h-32" : "w-14 h-14";
+                      const sizeClass = isRank4to6 ? "w-32 h-32 md:w-36 md:h-36 mx-auto" : "w-16 h-16 mx-auto";
                       const rankClass = isRank4to6 ? "text-4xl text-yellow-600 drop-shadow-md font-black" : "text-2xl font-black";
-                      const bgRowClass = isRank4to6 ? "bg-yellow-50/70 hover:bg-yellow-100/80" : "hover:bg-white/50";
+                      const bgRowClass = isRank4to6 ? "bg-yellow-50/70 hover:bg-yellow-100/90" : "hover:bg-white/70";
 
                       return (
                         <tr key={r.id} className={`${bgRowClass} transition-colors duration-200`}>
-                          <td className="px-8 py-5 title-font font-black text-gray-800 text-xl">第 <span className={rankClass}>{i + 4}</span> 名</td>
-                          <td className="px-8 py-5 whitespace-nowrap">
+                          <td className="px-8 py-6 whitespace-nowrap title-font font-black text-gray-800 text-xl">第 <span className={rankClass}>{i + 4}</span> 名</td>
+                          <td className="px-8 py-6 whitespace-nowrap text-center">
                             {r.image_url ? (
-                              <img src={r.image_url} className={`${sizeClass} rounded-full object-cover border-4 border-[#d5cec8] shadow-lg transform transition hover:scale-110`} alt={r.name} />
+                              <img src={r.image_url} className={`${sizeClass} rounded-2xl object-cover border-4 border-[#d5cec8] shadow-md transform transition hover:scale-105`} alt={r.name} />
                             ) : (
-                              <div className={`${sizeClass} rounded-full bg-[#f0ece9] border-4 border-[#d5cec8] flex items-center justify-center text-sm md:text-lg text-gray-500 font-bold shadow-lg`}>無照</div>
+                              <div className={`${sizeClass} rounded-2xl bg-[#f0ece9] border-4 border-[#d5cec8] flex items-center justify-center text-sm md:text-lg text-gray-500 font-bold shadow-md`}>無照</div>
                             )}
                           </td>
                           <td className="px-8 py-5">
