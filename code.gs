@@ -1,14 +1,10 @@
 // =====================================================
-// 票選系統 GAS 後端 v2.1 (含管理功能與資安強化)
+// 票選系統 GAS 後端 v2.2 (完整修復版)
 // =====================================================
 
 // ── 管理員密碼 Hash（SHA-256）──────────────────────────
 // 預設密碼: "Admin@2024"
 const ADMIN_PWD_HASH = 'b3f0f5188c6cbe2fe5f42dcda52effb5f4df2bd15f82b41fdb2a88dba381d3c0';
-
-const SHEET_COMMITTEES = '委員';
-const SHEET_CANDIDATES = '候選人';
-const SHEET_VOTES = '投票紀錄';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 工具：SHA-256 Hash
@@ -125,115 +121,407 @@ function handleRequest(e, method) {
 
     var result;
     switch (action) {
-      case 'getCommittees': result = getCommittees(); break;
-      case 'getCandidates': result = getCandidates(); break;
-      case 'login': result = login(data.name, data.login_code); break;
-      case 'adminLogin': result = adminLogin(data.acc, data.pwd); break;
+      // ── 公開 API（無需授權）─────────────────────
+      case 'getCommittees':
+        result = getCommittees();
+        break;
+      case 'getCandidates':
+        result = getCandidates();
+        break;
+      case 'login':
+        result = login(data.name, data.login_code);
+        break;
+      case 'adminLogin':
+        result = adminLogin(data.acc, data.pwd);
+        break;
 
-      // 委員 API
-      case 'getVotes': result = getVotes(data.sessionToken); break;
-      case 'vote': result = submitVote(data.sessionToken, data.votes); break;
-      case 'voterLogout': result = voterLogout(data.sessionToken); break;
+      // ── 委員 API（需要 sessionToken）────────────
+      case 'getVotes':
+        result = getVotes(data.sessionToken);
+        break;
+      case 'vote':
+        result = submitVote(data.sessionToken, data.votes);
+        break;
+      case 'voterLogout':
+        result = voterLogout(data.sessionToken);
+        break;
 
-      // 管理員 API
-      case 'getResults': verifyAdmin(data.adminToken); result = getResults(); break;
-      case 'addCandidate': verifyAdmin(data.adminToken); result = addCandidate(data); break;
-      case 'updateCandidate': verifyAdmin(data.adminToken); result = updateCandidate(data); break;
-      case 'deleteCandidate': verifyAdmin(data.adminToken); result = deleteCandidate(data.id); break;
-      case 'uploadImage': verifyAdmin(data.adminToken); result = uploadImage(data.id, data.image_url); break;
-      case 'addCommittee': verifyAdmin(data.adminToken); result = addCommittee(data); break;
-      case 'updateCommittee': verifyAdmin(data.adminToken); result = updateCommittee(data); break;
-      case 'deleteCommittee': verifyAdmin(data.adminToken); result = deleteCommittee(data.id); break;
-      case 'adminLogout': verifyAdmin(data.adminToken); revokeAdminToken(); result = { success: true }; break;
-      case 'unlockUser': verifyAdmin(data.adminToken); clearRateLimit(data.name); result = { success: true }; break;
-      case 'setup': result = setupSheets(); break;
-      default: result = { success: false, message: '未知的操作: ' + action };
+      // ── 管理員 API（需要 adminToken）────────────
+      case 'getResults':
+        verifyAdmin(data.adminToken);
+        result = getResults();
+        break;
+      case 'addCandidate':
+        verifyAdmin(data.adminToken);
+        result = addCandidate(data);
+        break;
+      case 'updateCandidate':
+        verifyAdmin(data.adminToken);
+        result = updateCandidate(data);
+        break;
+      case 'deleteCandidate':
+        verifyAdmin(data.adminToken);
+        result = deleteCandidate(data.id);
+        break;
+      case 'uploadImage':
+        verifyAdmin(data.adminToken);
+        result = uploadImage(data.id, data.image_url);
+        break;
+      case 'addCommittee':
+        verifyAdmin(data.adminToken);
+        result = addCommittee(data);
+        break;
+      case 'updateCommittee':
+        verifyAdmin(data.adminToken);
+        result = updateCommittee(data);
+        break;
+      case 'deleteCommittee':
+        verifyAdmin(data.adminToken);
+        result = deleteCommittee(data.id);
+        break;
+      case 'adminLogout':
+        verifyAdmin(data.adminToken);
+        revokeAdminToken();
+        result = { success: true };
+        break;
+      case 'unlockUser':
+        verifyAdmin(data.adminToken);
+        clearRateLimit(data.name);
+        result = { success: true };
+        break;
+      case 'setup':
+        result = setupSheets();
+        break;
+
+      default:
+        result = { success: false, message: 'Unknown action: ' + action };
     }
 
-    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ success: false, message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 核心邏輯
+// Spreadsheet 工具
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function getSpreadsheet() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function getSheet(sheetName, headers) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    if (headers) sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
 function getSheetData(sheetName) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  var sheet = getSpreadsheet().getSheetByName(sheetName);
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
   var headers = data[0];
   var result = [];
   for (var i = 1; i < data.length; i++) {
-    var row = data[i], obj = {};
-    for (var j = 0; j < headers.length; j++) { obj[headers[j]] = row[j]; }
+    var row = data[i];
+    var obj = {};
+    for (var j = 0; j < headers.length; j++) {
+      obj[headers[j]] = row[j];
+    }
     result.push(obj);
   }
   return result;
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 資料 Headers & Mappers
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var COMMITTEE_HEADERS = ['委員ID', '部門', '委員姓名', '登入代號(密碼)'];
+var CANDIDATE_HEADERS = ['候選人ID', '部門', '姓名', '優良事蹟簡介', '照片'];
+var VOTE_HEADERS = ['投票ID', '委員代號', '候選人ID', '分數'];
+
+// 委員：對外不回傳 login_code 明文
+// 但必須回傳前端指定的中文 Key 以確保下拉選單能抓到 '部門' 和 '委員姓名'
+function mapCommitteePublic(row) {
+  return {
+    id: row['委員ID'],
+    '部門': row['部門'],
+    department: row['部門'], // 提供英文相容性
+    '委員姓名': row['委員姓名'],
+    name: row['委員姓名'] // 提供英文相容性
+    // login_code 不回傳！
+  };
+}
+
+function mapCommitteeInternal(row) {
+  return {
+    id: row['委員ID'],
+    department: row['部門'],
+    name: row['委員姓名'],
+    login_code: row['登入代號(密碼)'] ? row['登入代號(密碼)'].toString() : ''
+  };
+}
+
+function mapCandidate(row) {
+  return {
+    id: row['候選人ID'],
+    department: row['部門'],
+    name: row['姓名'],
+    description: row['優良事蹟簡介'],
+    image_url: row['照片'] || null
+  };
+}
+
+function mapVote(row) {
+  return {
+    id: row['投票ID'],
+    committee_code: row['委員代號'] ? row['委員代號'].toString() : '',
+    candidate_id: row['候選人ID'],
+    candidateId: row['候選人ID'], // 增加相容性
+    score: row['分數']
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 公開 API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// 取得委員清單（不含密碼）
 function getCommittees() {
-  return getSheetData(SHEET_COMMITTEES).map(function(row) {
-    return { id: row['委員ID'], department: row['部門'], name: row['委員姓名'] };
-  });
+  return getSheetData('委員').map(mapCommitteePublic);
 }
 
+// 取得候選人清單
 function getCandidates() {
-  return getSheetData(SHEET_CANDIDATES).map(function(row) {
-    return { id: row['候選人ID'], department: row['部門'], name: row['姓名'], description: row['優良事蹟簡介'], image_url: row['照片'] || null };
-  });
+  return getSheetData('候選人').map(mapCandidate);
 }
 
+// 委員登入：發 sessionToken，不把 login_code 回傳前端
 function login(name, login_code) {
-  checkRateLimit(name || 'unknown');
-  var committees = getSheetData(SHEET_COMMITTEES);
-  var user = committees.find(function(c) { return c['委員姓名'] === name && String(c['登入代號(密碼)']) === String(login_code); });
-  if (!user) { recordFail(name || 'unknown'); return { success: false, message: '姓名或密碼錯誤' }; }
-  clearRateLimit(name);
-  return { success: true, sessionToken: generateSessionToken(String(user['登入代號(密碼)'])), committee: { id: user['委員ID'], department: user['部門'], name: user['委員姓名'] } };
+  var key = name || 'unknown';
+  checkRateLimit(key);
+
+  var committees = getSheetData('委員').map(mapCommitteeInternal);
+  var user = committees.find(function (c) {
+    return c.name === name && String(c.login_code) === String(login_code);
+  });
+
+  if (!user) {
+    recordFail(key);
+    return { success: false, message: '姓名或密碼錯誤' };
+  }
+
+  clearRateLimit(key);
+  var sessionToken = generateSessionToken(user.login_code);
+
+  return {
+    success: true,
+    sessionToken: sessionToken,
+    committee: {
+      id: user.id,
+      department: user.department,
+      name: user.name
+      // login_code 不回傳！
+    }
+  };
 }
 
+// 管理員登入：驗 SHA-256 hash，發 adminToken
 function adminLogin(acc, pwd) {
-  checkRateLimit('ADMIN');
-  if (acc !== 'admin' || hashSHA256(pwd || '') !== ADMIN_PWD_HASH) { recordFail('ADMIN'); return { success: false, message: '帳號或密碼錯誤' }; }
-  clearRateLimit('ADMIN');
-  return { success: true, adminToken: generateAdminToken() };
+  var key = 'ADMIN';
+  checkRateLimit(key);
+
+  var pwdHash = hashSHA256(pwd || '');
+  if (acc !== 'admin' || pwdHash !== ADMIN_PWD_HASH) {
+    recordFail(key);
+    return { success: false, message: '帳號或密碼錯誤' };
+  }
+
+  clearRateLimit(key);
+  var token = generateAdminToken();
+  return { success: true, adminToken: token };
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 委員 API（需 sessionToken）
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function getVotes(sessionToken) {
   var sess = verifySession(sessionToken);
-  return getSheetData(SHEET_VOTES).filter(function(v) { return String(v['委員代號']) === String(sess.code); }).map(function(row) {
-    return { candidate_id: row['候選人ID'], score: row['分數'] };
-  });
+  var data = getSheetData('投票紀錄').map(mapVote);
+  return data.filter(function (v) { return v.committee_code === String(sess.code); });
 }
 
 function submitVote(sessionToken, votes) {
   var sess = verifySession(sessionToken);
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_VOTES);
+  var committeeCode = String(sess.code);
+
+  var sheet = getSpreadsheet().getSheetByName('投票紀錄');
+  if (!sheet) return { success: false, message: '找不到投票紀錄工作表' };
+
+  // 刪除舊紀錄
   var data = sheet.getDataRange().getValues();
-  for (var i = data.length - 1; i >= 1; i--) { if (String(data[i][1]) === String(sess.code)) sheet.deleteRow(i + 1); }
-  votes.forEach(function(v) { sheet.appendRow([Date.now() + Math.random(), sess.code, v.candidateId, v.score]); });
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (data[i][1].toString() === committeeCode) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+
+  // 新增新紀錄
+  votes.forEach(function (vote) {
+    sheet.appendRow([
+      new Date().getTime() + Math.floor(Math.random() * 1000),
+      committeeCode,
+      vote.candidateId,
+      vote.score
+    ]);
+  });
+
   return { success: true };
 }
 
-function getResults() {
-  var candidates = getCandidates(), votes = getSheetData(SHEET_VOTES);
-  var results = candidates.map(function(c) {
-    var cv = votes.filter(function(v) { return v['候選人ID'] == c.id; });
-    var total = cv.reduce(function(s, v) { return s + Number(v['分數']); }, 0);
-    return { id: c.id, department: c.department, name: c.name, description: c.description, image_url: c.image_url, totalScore: total, voteCount: cv.length, average: cv.length > 0 ? (total / cv.length).toFixed(2) : '0.00' };
-  });
-  return results.sort(function(a, b) { return b.totalScore - a.totalScore; });
+function voterLogout(sessionToken) {
+  revokeSession(sessionToken);
+  return { success: true };
 }
 
-function addCandidate(d) { SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_CANDIDATES).appendRow([Date.now(), d.department, d.name, d.description, '']); return { success: true }; }
-function updateCandidate(d) { /* 實作細節略... */ return { success: true }; }
-function deleteCandidate(id) { /* 實作細節略... */ return { success: true }; }
-function uploadImage(id, url) { /* 實作細節略... */ return { success: true }; }
-function addCommittee(d) { SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_COMMITTEES).appendRow([Date.now(), d.department, d.name, d.login_code]); return { success: true }; }
-function updateCommittee(d) { /* 實作細節略... */ return { success: true }; }
-function deleteCommittee(id) { /* 實作細節略... */ return { success: true }; }
-function voterLogout(t) { revokeSession(t); return { success: true }; }
-function setupSheets() { /* 略 */ return { success: true }; }
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 管理員 API（呼叫前已在 handleRequest 做 verifyAdmin）
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function getResults() {
+  var candidates = getCandidates();
+  var votes = getSheetData('投票紀錄').map(mapVote);
+
+  var results = candidates.map(function (candidate) {
+    var cv = votes.filter(function (v) { return v.candidate_id == candidate.id; });
+    var total = cv.reduce(function (s, v) { return s + Number(v.score); }, 0);
+    var avg = cv.length > 0 ? (total / cv.length).toFixed(2) : '0.00';
+    return {
+      id: candidate.id,
+      department: candidate.department,
+      name: candidate.name,
+      description: candidate.description,
+      image_url: candidate.image_url,
+      totalScore: total,
+      voteCount: cv.length,
+      average: avg
+    };
+  });
+
+  results.sort(function (a, b) { return b.totalScore - a.totalScore; });
+  return results;
+}
+
+function addCandidate(data) {
+  var sheet = getSpreadsheet().getSheetByName('候選人');
+  if (!sheet) return { success: false, message: '找不到候選人工作表' };
+  var id = new Date().getTime();
+  sheet.appendRow([id, data.department, data.name, data.description, '']);
+  return { success: true, id: id };
+}
+
+function updateCandidate(data) {
+  var sheet = getSpreadsheet().getSheetByName('候選人');
+  if (!sheet) return { success: false, message: '找不到候選人工作表' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0] == data.id) {
+      sheet.getRange(i + 1, 2).setValue(data.department);
+      sheet.getRange(i + 1, 3).setValue(data.name);
+      sheet.getRange(i + 1, 4).setValue(data.description);
+      return { success: true };
+    }
+  }
+  return { success: false, message: '找不到該候選人' };
+}
+
+function deleteCandidate(id) {
+  var sheet = getSpreadsheet().getSheetByName('候選人');
+  if (!sheet) return { success: false, message: '找不到候選人工作表' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      var voteSheet = getSpreadsheet().getSheetByName('投票紀錄');
+      if (voteSheet) {
+        var vr = voteSheet.getDataRange().getValues();
+        for (var j = vr.length - 1; j >= 1; j--) {
+          if (vr[j][2] == id) voteSheet.deleteRow(j + 1);
+        }
+      }
+      return { success: true };
+    }
+  }
+  return { success: false, message: '找不到該候選人' };
+}
+
+function uploadImage(id, image_url) {
+  if (!image_url || !image_url.startsWith('data:image/')) {
+    return { success: false, message: '只接受圖片格式' };
+  }
+  var sheet = getSpreadsheet().getSheetByName('候選人');
+  if (!sheet) return { success: false, message: '找不到候選人工作表' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0] == id) {
+      sheet.getRange(i + 1, 5).setValue(image_url);
+      return { success: true };
+    }
+  }
+  return { success: false, message: '找不到該候選人' };
+}
+
+function addCommittee(data) {
+  var sheet = getSpreadsheet().getSheetByName('委員');
+  if (!sheet) return { success: false, message: '找不到委員工作表' };
+  var id = new Date().getTime();
+  sheet.appendRow([id, data.department, data.name, data.login_code]);
+  return { success: true, id: id };
+}
+
+function updateCommittee(data) {
+  var sheet = getSpreadsheet().getSheetByName('委員');
+  if (!sheet) return { success: false, message: '找不到委員工作表' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0] == data.id) {
+      sheet.getRange(i + 1, 2).setValue(data.department);
+      sheet.getRange(i + 1, 3).setValue(data.name);
+      if (data.login_code) sheet.getRange(i + 1, 4).setValue(data.login_code);
+      return { success: true };
+    }
+  }
+  return { success: false, message: '找不到該委員' };
+}
+
+function deleteCommittee(id) {
+  var sheet = getSpreadsheet().getSheetByName('委員');
+  if (!sheet) return { success: false, message: '找不到委員工作表' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, message: '找不到該委員' };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 初始化
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function setupSheets() {
+  getSheet('委員', COMMITTEE_HEADERS);
+  getSheet('候選人', CANDIDATE_HEADERS);
+  getSheet('投票紀錄', VOTE_HEADERS);
+  return { success: true, message: '工作表初始化完成' };
+}
