@@ -71,11 +71,11 @@
     const GAS_APP_URL = "https://script.google.com/macros/s/AKfycbw7uChOFkNVUdNMYEG4jAlNUEg8gSoDb3zUgS2WjQX37vFqvmdHmdbTOQEaKwiRRxpu/exec";
 
     // --- Token 工具 ---
-    const getAdminToken  = () => sessionStorage.getItem('adminToken');
-    const setAdminToken  = (t) => sessionStorage.setItem('adminToken', t);
+    const getAdminToken = () => sessionStorage.getItem('adminToken');
+    const setAdminToken = (t) => sessionStorage.setItem('adminToken', t);
     const clearAdminToken = () => sessionStorage.removeItem('adminToken');
-    const getSessionToken  = () => sessionStorage.getItem('sessionToken');
-    const setSessionToken  = (t) => sessionStorage.setItem('sessionToken', t);
+    const getSessionToken = () => sessionStorage.getItem('sessionToken');
+    const setSessionToken = (t) => sessionStorage.setItem('sessionToken', t);
     const clearSessionToken = () => sessionStorage.removeItem('sessionToken');
 
     // --- API 呼叫模組 ---
@@ -459,15 +459,19 @@
       const [saving, setSaving] = useState(false);
 
       useEffect(() => {
-        // 同步取得候選人與歷史投票紀錄（用 sessionToken 驗證，不傳 login_code）
+        // 同步取得候選人與歷史投票紀錄
         Promise.all([
           apiCall('getCandidates'),
           apiCall('getVotes', { sessionToken: getSessionToken() })
         ]).then(([candRes, voteRes]) => {
           if (candRes) setCandidates(candRes);
-          if (voteRes) {
+          if (voteRes && Array.isArray(voteRes)) {
             const initScores = {};
-            voteRes.forEach(v => { initScores[v.candidate_id] = Number(v.score); });
+            // 修正：對齊後端回傳的 key 名稱 candidate_id
+            voteRes.forEach(v => {
+              const cid = v.candidate_id || v.candidateId;
+              if (cid) initScores[cid] = Number(v.score);
+            });
             setScores(initScores);
           }
           setLoading(false);
