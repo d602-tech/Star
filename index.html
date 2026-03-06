@@ -317,7 +317,12 @@
                 {results.map((r, i) => (
                   <tr key={r.id} className={i < 3 ? 'bg-yellow-50' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {i === 0 ? '🥇 冠軍' : i === 1 ? '🥈 亞軍' : i === 2 ? '🥉 季軍' : `第 ${i + 1} 名`}
+                      {
+                        i === 0 ? <span className="font-bold text-lg text-yellow-600">🥇 冠軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 2000 元</span></span> :
+                          i === 1 ? <span className="font-bold text-lg text-gray-500">🥈 亞軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 1000 元</span></span> :
+                            i === 2 ? <span className="font-bold text-lg text-amber-700">🥉 季軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 500 元</span></span> :
+                              <span className="text-gray-600">第 {i + 1} 名<br /><span className="text-xs font-normal text-blue-500 rounded bg-blue-50 px-1 py-0.5 mt-1 inline-block">參賽獎: 工安激勵品</span></span>
+                      }
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{r.name}</div>
@@ -387,20 +392,20 @@
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {data.map(c => (
-              <div key={c['候選人ID']} className="bg-white rounded-xl shadow p-6 relative border border-gray-100">
+              <div key={c.id} className="bg-white rounded-xl shadow p-6 relative border border-gray-100">
                 <div className="absolute top-4 right-4 flex space-x-2">
-                  <button onClick={() => handleDelete(c['候選人ID'])} className="bg-red-100 text-red-600 px-2 py-1 text-xs rounded font-bold hover:bg-red-200">刪除</button>
+                  <button onClick={() => handleDelete(c.id)} className="bg-red-100 text-red-600 px-2 py-1 text-xs rounded font-bold hover:bg-red-200">刪除</button>
                 </div>
-                {c['照片'] ? (
-                  <img src={c['照片']} alt={c['姓名']} className="w-full h-48 object-cover rounded-lg mb-4 cursor-pointer hover:opacity-80 transition" onClick={() => handleUploadImage(c['候選人ID'])} title="點擊更換照片" />
+                {c.image_url ? (
+                  <img src={c.image_url} alt={c.name} className="w-full h-48 object-cover rounded-lg mb-4 cursor-pointer hover:opacity-80 transition" onClick={() => handleUploadImage(c.id)} title="點擊更換照片" />
                 ) : (
-                  <div onClick={() => handleUploadImage(c['候選人ID'])} className="w-full h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-4 cursor-pointer hover:bg-gray-200 transition text-gray-400 font-medium">
+                  <div onClick={() => handleUploadImage(c.id)} className="w-full h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-4 cursor-pointer hover:bg-gray-200 transition text-gray-400 font-medium">
                     + 點擊上傳照片
                   </div>
                 )}
-                <div className="text-sm font-bold text-blue-600 mb-1">{c['部門']}</div>
-                <div className="text-xl font-extrabold text-gray-900 mb-2">{c['姓名']}</div>
-                <p className="text-gray-600 text-sm whitespace-pre-wrap h-24 overflow-y-auto">{c['優良事蹟簡介']}</p>
+                <div className="text-sm font-bold text-blue-600 mb-1">{c.department}</div>
+                <div className="text-xl font-extrabold text-gray-900 mb-2">{c.name}</div>
+                <p className="text-gray-600 text-sm whitespace-pre-wrap h-24 overflow-y-auto">{c.description}</p>
               </div>
             ))}
           </div>
