@@ -4,7 +4,7 @@
 
 // ── 管理員密碼 Hash（SHA-256）──────────────────────────
 // 預設密碼: "Admin@2024"
-const ADMIN_PWD_HASH = 'b3f0f5188c6cbe2fe5f42dcda52effb5f4df2bd15f82b41fdb2a88dba381d3c0';
+const ADMIN_PWD_HASH = 'd3fc50c8f714cebd16d6c827826df01205bf519529f9d34775293cf9b70a420e';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 工具：SHA-256 Hash
@@ -272,7 +272,7 @@ function mapCommitteeInternal(row) {
 
 function mapCandidate(row) {
   return {
-    id: row['候選人ID'],
+    id: row['候選人ID'] || row['姓名'], // 防呆：沒填ID就使用姓名當作 ID
     department: row['部門'],
     name: row['姓名'],
     description: row['優良事蹟簡介'],
@@ -434,7 +434,8 @@ function updateCandidate(data) {
   if (!sheet) return { success: false, message: '找不到候選人工作表' };
   var rows = sheet.getDataRange().getValues();
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0] == data.id) {
+    var cid = rows[i][0] || rows[i][2]; // 防呆：允許 ID 為空時依賴姓名
+    if (String(cid) === String(data.id)) {
       sheet.getRange(i + 1, 2).setValue(data.department);
       sheet.getRange(i + 1, 3).setValue(data.name);
       sheet.getRange(i + 1, 4).setValue(data.description);
@@ -449,13 +450,14 @@ function deleteCandidate(id) {
   if (!sheet) return { success: false, message: '找不到候選人工作表' };
   var rows = sheet.getDataRange().getValues();
   for (var i = rows.length - 1; i >= 1; i--) {
-    if (rows[i][0] == id) {
+    var cid = rows[i][0] || rows[i][2];
+    if (String(cid) === String(id)) {
       sheet.deleteRow(i + 1);
       var voteSheet = getSpreadsheet().getSheetByName('投票紀錄');
       if (voteSheet) {
         var vr = voteSheet.getDataRange().getValues();
         for (var j = vr.length - 1; j >= 1; j--) {
-          if (vr[j][2] == id) voteSheet.deleteRow(j + 1);
+          if (String(vr[j][2]) === String(id)) voteSheet.deleteRow(j + 1);
         }
       }
       return { success: true };
@@ -472,7 +474,8 @@ function uploadImage(id, image_url) {
   if (!sheet) return { success: false, message: '找不到候選人工作表' };
   var rows = sheet.getDataRange().getValues();
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0] == id) {
+    var cid = rows[i][0] || rows[i][2];
+    if (String(cid) === String(id)) {
       sheet.getRange(i + 1, 5).setValue(image_url);
       return { success: true };
     }
