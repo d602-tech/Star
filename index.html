@@ -286,7 +286,7 @@
         apiCall('getResults', { adminToken: getAdminToken() }).then(res => {
           if (res) {
             setResults(res);
-            if (res.length > 0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            if (res.length > 0) confetti({ particleCount: 200, spread: 90, origin: { y: 0.6 } });
           }
           setLoading(false);
         });
@@ -296,47 +296,134 @@
 
       if (loading) return <Loading />;
 
+      const top3 = results.slice(0, 3);
+      const others = results.slice(3);
+
       return (
         <div className="fade-in">
           <div className="flex justify-between items-end mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">評選總排行榜</h2>
+            <h2 className="text-3xl font-bold text-gray-800">🏆 評選總排行榜</h2>
             <button onClick={loadResults} className="text-blue-600 hover:underline">重新整理</button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200 text-left">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">名次</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">部門/姓名</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">總得分</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">得票數/平均</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {results.map((r, i) => (
-                  <tr key={r.id} className={i < 3 ? 'bg-yellow-50' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {
-                        i === 0 ? <span className="font-bold text-lg text-yellow-600">🥇 冠軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 2000 元</span></span> :
-                          i === 1 ? <span className="font-bold text-lg text-gray-500">🥈 亞軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 1000 元</span></span> :
-                            i === 2 ? <span className="font-bold text-lg text-amber-700">🥉 季軍<br /><span className="text-sm font-normal text-red-500 rounded bg-red-100 px-1 py-0.5 mt-1 inline-block">獎金 500 元</span></span> :
-                              <span className="text-gray-600">第 {i + 1} 名<br /><span className="text-xs font-normal text-blue-500 rounded bg-blue-50 px-1 py-0.5 mt-1 inline-block">參賽獎: 工安激勵品</span></span>
-                      }
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{r.name}</div>
-                      <div className="text-sm text-gray-500">{r.department}</div>
-                    </td>
-                    <td className="px-6 py-4 font-extrabold text-blue-600 text-xl">{r.totalScore}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      獲得 {r.voteCount} 票 (平均: {r.average})
-                    </td>
+          {/* 榮譽頒獎台 */}
+          {top3.length > 0 && (
+            <div className="flex justify-center items-end h-80 mb-12 space-x-2 md:space-x-8 px-4">
+              {/* 第二名 */}
+              {top3[1] && (
+                <div className="flex flex-col items-center w-32 md:w-48 animate-[fadeIn_0.5s_ease-out]">
+                  <div className="mb-2 relative">
+                    {top3[1].image_url ? (
+                      <img src={top3[1].image_url} className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover border-4 border-gray-300 shadow-lg" alt={top3[1].name} />
+                    ) : (
+                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gray-200 border-4 border-gray-300 flex items-center justify-center text-gray-400 font-bold text-xl shadow-lg">?</div>
+                    )}
+                    <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow">🥈 亞軍</div>
+                  </div>
+                  <div className="text-center mb-2 z-10 w-full">
+                    <div className="font-bold text-gray-800 truncate">{top3[1].name}</div>
+                    <div className="text-xs text-gray-500 truncate">{top3[1].department}</div>
+                    <div className="text-sm font-black text-blue-600 mt-1">{top3[1].totalScore} 分</div>
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-gray-400 to-gray-200 rounded-t-lg shadow-inner flex flex-col items-center justify-end text-white pb-4 min-h-[140px]">
+                    <span className="font-bold text-2xl drop-shadow-md">2</span>
+                    <span className="text-xs mt-2 bg-red-600 px-2 py-1 rounded shadow text-white">獎金 1000 元</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 第一名 */}
+              {top3[0] && (
+                <div className="flex flex-col items-center w-32 md:w-56 animate-[fadeIn_0.7s_ease-out]">
+                  <div className="mb-2 relative">
+                    <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-5xl drop-shadow-lg">👑</div>
+                    {top3[0].image_url ? (
+                      <img src={top3[0].image_url} className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-yellow-400 shadow-xl" alt={top3[0].name} />
+                    ) : (
+                      <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 border-4 border-yellow-400 flex items-center justify-center text-gray-400 font-bold text-2xl shadow-xl">?</div>
+                    )}
+                    <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow whitespace-nowrap">🥇 冠軍</div>
+                  </div>
+                  <div className="text-center mb-2 z-10 w-full">
+                    <div className="font-black text-lg text-gray-900 truncate">{top3[0].name}</div>
+                    <div className="text-sm text-gray-500 truncate">{top3[0].department}</div>
+                    <div className="text-lg font-black text-blue-700 mt-1">{top3[0].totalScore} 分</div>
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-yellow-500 to-yellow-300 rounded-t-lg shadow-inner flex flex-col items-center justify-end text-white pb-6 min-h-[180px]">
+                    <span className="font-bold text-4xl drop-shadow-md">1</span>
+                    <span className="text-sm mt-3 bg-red-600 px-3 py-1 rounded-md shadow text-white font-bold tracking-wide">獎金 2000 元</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 第三名 */}
+              {top3[2] && (
+                <div className="flex flex-col items-center w-32 md:w-48 animate-[fadeIn_0.9s_ease-out]">
+                  <div className="mb-2 relative">
+                    {top3[2].image_url ? (
+                      <img src={top3[2].image_url} className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover border-4 border-orange-300 shadow-md" alt={top3[2].name} />
+                    ) : (
+                      <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gray-200 border-4 border-orange-300 flex items-center justify-center text-gray-400 font-bold text-xl shadow-md">?</div>
+                    )}
+                    <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow">🥉 季軍</div>
+                  </div>
+                  <div className="text-center mb-2 z-10 w-full">
+                    <div className="font-bold text-gray-800 truncate">{top3[2].name}</div>
+                    <div className="text-xs text-gray-500 truncate">{top3[2].department}</div>
+                    <div className="text-sm font-black text-blue-600 mt-1">{top3[2].totalScore} 分</div>
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-orange-500 to-orange-300 rounded-t-lg shadow-inner flex flex-col items-center justify-end text-white pb-3 min-h-[110px]">
+                    <span className="font-bold text-2xl drop-shadow-md">3</span>
+                    <span className="text-xs mt-2 bg-red-600 px-2 py-1 rounded shadow text-white">獎金 500 元</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 其餘名次列表 */}
+          {others.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mt-8">
+              <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                <h3 className="text-sm font-bold text-gray-700">其他名次 (參賽獎: 工安激勵品)</h3>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200 text-left">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">名次</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">照片</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">部門/姓名</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">總得分</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">得票數/平均</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {others.map((r, i) => (
+                    <tr key={r.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-600">
+                        第 {i + 4} 名
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {r.image_url ? (
+                          <img src={r.image_url} className="w-10 h-10 rounded-full object-cover border border-gray-200" alt={r.name} />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs text-gray-400 font-bold">無</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-gray-900">{r.name}</div>
+                        <div className="text-xs text-gray-500">{r.department}</div>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-blue-600 text-lg">{r.totalScore}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        獲得 {r.voteCount} 票 (平均: {r.average})
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       );
     }
