@@ -271,12 +271,19 @@ function mapCommitteeInternal(row) {
 }
 
 function mapCandidate(row) {
+  // 將從第 4 索引 (E 欄, 照片起) 開始的所有內容拼接起來組成完整的 Base64
+  var imageParts = [];
+  for (var i = 4; i < row.length; i++) {
+    if (row[i]) imageParts.push(row[i]);
+  }
+  var fullImage = imageParts.length > 0 ? imageParts.join('') : null;
+
   return {
     id: row['候選人ID'] || row['姓名'], // 防呆：沒填ID就使用姓名當作 ID
     department: row['部門'],
     name: row['姓名'],
     description: row['優良事蹟簡介'],
-    image_url: row['照片'] || null
+    image_url: fullImage
   };
 }
 
@@ -301,7 +308,33 @@ function getCommittees() {
 
 // 取得候選人清單
 function getCandidates() {
-  return getSheetData('候選人').map(mapCandidate);
+  // 特別處理因為 getSheetData 只吃 header 長度，如果照片被切版會掉尾段資料。
+  // 我們直接走更底層的方法來保證拿滿所有欄
+  var sheet = getSpreadsheet().getSheetByName('候選人');
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  var result = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    
+    // 組合照片 Base64 (欄位 index 4 開始到陣列尾端)
+    var imgParts = [];
+    for (var j = 4; j < row.length; j++) {
+      if (row[j]) imgParts.push(row[j]);
+    }
+    var fullImg = imgParts.length > 0 ? imgParts.join('') : null;
+
+    result.push({
+      id: row[0] || row[2], // 候選人ID or 姓名
+      department: row[1],
+      name: row[2],
+      description: row[3],
+      image_url: fullImg
+    });
+  }
+  return result;
 }
 
 // 委員登入：發 sessionToken，不把 login_code 回傳前端
@@ -402,7 +435,7 @@ function getResults() {
   var votes = getSheetData('投票紀錄').map(mapVote);
 
   var results = candidates.map(function (candidate) {
-    var cv = votes.filter(function (v) { return v.candidate_id == candidate.id; });
+    var cv = votes.filter(function (v) { return String(v.candidate_id) === String(candidate.id); });
     var total = cv.reduce(function (s, v) { return s + Number(v.score); }, 0);
     var avg = cv.length > 0 ? (total / cv.length).toFixed(2) : '0.00';
     return {
@@ -472,11 +505,26 @@ function uploadImage(id, image_url) {
   }
   var sheet = getSpreadsheet().getSheetByName('候選人');
   if (!sheet) return { success: false, message: '找不到候選人工作表' };
+  
+  // Google Sheets 單個儲存格最大只能放 50000 字元，所以我們必須切割儲存
+  var MAX_CELL_LEN = 48000;
+  var chunks = [];
+  for (var pos = 0; pos < image_url.length; pos += MAX_CELL_LEN) {
+    chunks.push(image_url.substring(pos, pos + MAX_CELL_LEN));
+  }
+
   var rows = sheet.getDataRange().getValues();
   for (var i = 1; i < rows.length; i++) {
     var cid = rows[i][0] || rows[i][2];
     if (String(cid) === String(id)) {
-      sheet.getRange(i + 1, 5).setValue(image_url);
+      // 先清空原本這列後面的所有儲存格避免殘留髒資料
+      var colsToClear = sheet.getLastColumn() - 4; // 從 E 欄 (index 5, col 5) 開始往後算
+      if (colsToClear > 0) {
+        sheet.getRange(i + 1, 5, 1, colsToClear).clearContent();
+      }
+      
+      // 寫入新的分塊
+      sheet.getRange(i + 1, 5, 1, chunks.length).setValues([chunks]);
       return { success: true };
     }
   }
