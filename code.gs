@@ -303,13 +303,17 @@ function mapVote(row) {
 
 // 取得委員清單（不含密碼）
 function getCommittees() {
-  return getSheetData('委員').map(mapCommitteePublic);
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get("COMMITTEES_LIST");
+  if (cached) return JSON.parse(cached);
+
+  var data = getSheetData('委員').map(mapCommitteePublic);
+  cache.put("COMMITTEES_LIST", JSON.stringify(data), 600); // 存 10 分鐘
+  return data;
 }
 
 // 取得候選人清單
 function getCandidates() {
-  // 特別處理因為 getSheetData 只吃 header 長度，如果照片被切版會掉尾段資料。
-  // 我們直接走更底層的方法來保證拿滿所有欄
   var sheet = getSpreadsheet().getSheetByName('候選人');
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
@@ -400,23 +404,29 @@ function submitVote(sessionToken, votes) {
   var sheet = getSpreadsheet().getSheetByName('投票紀錄');
   if (!sheet) return { success: false, message: '找不到投票紀錄工作表' };
 
-  // 刪除舊紀錄
   var data = sheet.getDataRange().getValues();
-  for (var i = data.length - 1; i >= 1; i--) {
-    if (data[i][1].toString() === committeeCode) {
-      sheet.deleteRow(i + 1);
+  var newData = [data[0]]; // 保留標題列
+
+  // 1. 保留除了此委員以外的所有歷史紀錄
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1].toString() !== committeeCode) {
+      newData.push(data[i]);
     }
   }
 
-  // 新增新紀錄
+  // 2. 加入此委員最新的成績
   votes.forEach(function (vote) {
-    sheet.appendRow([
-      new Date().getTime() + Math.floor(Math.random() * 1000),
+    newData.push([
+      new Date().getTime() + Math.floor(Math.random() * 1000), // 隨機避免 ID 衝突
       committeeCode,
       vote.candidateId,
       vote.score
     ]);
   });
+
+  // 3. 一次性清空並寫入 (Batch Update: 將執行時間從數秒壓制到毫秒)
+  sheet.getDataRange().clearContent();
+  sheet.getRange(1, 1, newData.length, newData[0].length).setValues(newData);
 
   return { success: true };
 }
