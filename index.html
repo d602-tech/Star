@@ -258,7 +258,10 @@
         <div className="min-h-screen bg-gray-100 fade-in">
           <nav className="bg-gray-900 text-white shadow-lg sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
-              <div className="font-bold text-xl tracking-wider">管理員後台</div>
+              <div className="flex flex-col">
+                <div className="font-bold text-xl tracking-wider">管理員後台</div>
+                <div className="text-[10px] text-blue-300 font-mono -mt-1">v2.3 典禮優化版</div>
+              </div>
               <div className="flex space-x-2">
                 <button onClick={() => setTab('results')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'results' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>排行榜</button>
                 <button onClick={() => setTab('votingStatus')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'votingStatus' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>投票狀況</button>
@@ -282,6 +285,8 @@
     function AdminResults() {
       const [results, setResults] = useState([]);
       const [loading, setLoading] = useState(true);
+      const [isPlaying, setIsPlaying] = useState(true);
+      const audioRef = useRef(null);
 
       const loadResults = () => {
         setLoading(true);
@@ -289,22 +294,24 @@
           if (res) {
             setResults(res);
             if (res.length > 0) {
-              try {
-                // 背景音樂一律使用指定的音樂連結
-                const bgm = new Audio('https://drive.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp');
+              if (!audioRef.current) {
+                audioRef.current = new Audio('https://docs.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp');
+                audioRef.current.loop = true;
+                audioRef.current.volume = 0.6;
+              }
 
-                bgm.volume = 0.8;
-                bgm.loop = true; // 設為循環播放當作背景音樂
+              if (isPlaying) {
+                audioRef.current.play().catch(e => {
+                  console.log('Audio auto-play blocked:', e);
+                  setIsPlaying(false);
+                });
+              }
 
-                // 播放音樂
-                bgm.play().catch(e => console.log('Audio error:', e));
-              } catch (e) { }
-
-              // 第一次第一波彩帶
+              // 第一波彩帶
               confetti({ particleCount: 300, spread: 120, origin: { y: 0.6 }, zIndex: 100 });
               // 第二波彩帶
               setTimeout(() => confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 100 }), 1500);
-              // 第三波代表 4~6 名的彩帶
+              // 第三波彩帶
               setTimeout(() => confetti({ particleCount: 150, spread: 80, origin: { y: 0.8 }, zIndex: 100 }), 3500);
             }
           }
@@ -312,7 +319,25 @@
         });
       };
 
-      useEffect(() => { loadResults(); }, []);
+      const toggleMusic = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+          audioRef.current.pause();
+        } else {
+          audioRef.current.play().catch(e => console.log('Play blocked', e));
+        }
+        setIsPlaying(!isPlaying);
+      };
+
+      useEffect(() => {
+        loadResults();
+        return () => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+          }
+        };
+      }, []);
 
       if (loading) return <Loading />;
 
@@ -324,9 +349,24 @@
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-500/20 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none"></div>
 
-          <div className="relative z-10 flex justify-between items-end mb-16">
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6">
             <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 drop-shadow-[0_2px_10px_rgba(255,215,0,0.5)] tracking-widest pl-4 border-l-8 border-yellow-500">🏆 評選總排行榜</h2>
-            <button onClick={loadResults} className="text-gray-300 hover:text-white bg-gray-800/80 px-6 py-2 rounded-lg border border-gray-600 backdrop-blur-md shadow-lg transition">重新整理</button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={toggleMusic}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold shadow-lg transition-all duration-300 border-2 ${isPlaying
+                    ? 'bg-yellow-500 text-black border-yellow-400 animate-pulse'
+                    : 'bg-gray-800 text-yellow-500 border-gray-600 hover:bg-gray-700'
+                  }`}
+              >
+                {isPlaying ? (
+                  <><span>🎵 頒獎音樂播放中</span></>
+                ) : (
+                  <><span>🔇 音樂已暫停</span></>
+                )}
+              </button>
+              <button onClick={loadResults} className="text-gray-300 hover:text-white bg-gray-800/80 px-6 py-2 rounded-lg border border-gray-600 backdrop-blur-md shadow-lg transition font-bold">重新整理</button>
+            </div>
           </div>
 
           {top3.length > 0 && (
