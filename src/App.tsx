@@ -37,7 +37,7 @@ export default function App() {
   useEffect(() => {
     const savedAuth = localStorage.getItem('system_auth');
     const savedUser = localStorage.getItem('committee_user');
-    
+
     if (savedAuth === 'admin') {
       setSystemAuth('admin');
       setUser({ id: 0, department: '系統', name: '管理員', login_code: 'ADMIN' });
@@ -88,28 +88,28 @@ export default function App() {
               </div>
             </div>
           </div>
-          
+
           {user && (
             <div className="flex items-center gap-4 flex-wrap justify-center">
               <span className="bg-emerald-700 px-3 py-1 rounded-full text-sm font-medium border border-emerald-500 shadow-inner">
                 {user.login_code === 'ADMIN' ? '管理員' : '委員'}：{user.name}
               </span>
-              
+
               {user.login_code === 'ADMIN' && (
                 <>
-                  <button 
+                  <button
                     onClick={() => setView('admin_committees')}
                     className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view === 'admin_committees' ? 'bg-emerald-800 text-white shadow-inner' : 'hover:bg-emerald-500'}`}
                   >
                     委員管理
                   </button>
-                  <button 
+                  <button
                     onClick={() => setView('admin_candidates')}
                     className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view === 'admin_candidates' ? 'bg-emerald-800 text-white shadow-inner' : 'hover:bg-emerald-500'}`}
                   >
                     候選人管理
                   </button>
-                  <button 
+                  <button
                     onClick={() => setView('results')}
                     className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view === 'results' ? 'bg-emerald-800 text-white shadow-inner' : 'hover:bg-emerald-500'}`}
                   >
@@ -117,9 +117,9 @@ export default function App() {
                   </button>
                 </>
               )}
-              
+
               {user.login_code !== 'ADMIN' && (
-                <button 
+                <button
                   onClick={() => setView('vote')}
                   className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view === 'vote' ? 'bg-emerald-800 text-white shadow-inner' : 'hover:bg-emerald-500'}`}
                 >
@@ -127,7 +127,7 @@ export default function App() {
                 </button>
               )}
 
-              <button 
+              <button
                 onClick={handleLogout}
                 className="flex items-center gap-1 text-emerald-100 hover:text-white transition-colors text-sm font-medium ml-2"
               >
@@ -180,7 +180,7 @@ function SystemLogin({ onAuth }: { onAuth: (role: 'admin' | 'voter') => void }) 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">帳號</label>
-          <input 
+          <input
             type="text"
             value={account}
             onChange={(e) => setAccount(e.target.value)}
@@ -190,7 +190,7 @@ function SystemLogin({ onAuth }: { onAuth: (role: 'admin' | 'voter') => void }) 
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">密碼</label>
-          <input 
+          <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -222,10 +222,10 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
       .then(data => {
         const validCommittees = data.filter((c: Committee) => c.login_code !== 'ADMIN');
         setCommittees(validCommittees);
-        
+
         const depts = Array.from(new Set(validCommittees.map((c: Committee) => c.department).filter(Boolean))) as string[];
         setDepartments(depts);
-        
+
         if (depts.length > 0) {
           setSelectedDept(depts[0]);
           const firstDeptUsers = validCommittees.filter((c: Committee) => c.department === depts[0]);
@@ -254,15 +254,15 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
       method: 'POST',
       body: JSON.stringify({ action: 'login', name: selectedName, login_code: code })
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        onLogin(data.committee);
-      } else {
-        setError(data.message || '姓名代號錯誤，請重新輸入。');
-      }
-    })
-    .catch(() => setError('驗證發生錯誤'));
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          onLogin(data.committee);
+        } else {
+          setError(data.message || '姓名代號錯誤，請重新輸入。');
+        }
+      })
+      .catch(() => setError('驗證發生錯誤'));
   };
 
   if (loading) return <div className="text-center py-12 text-slate-500">載入委員資料中...</div>;
@@ -272,12 +272,12 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
   return (
     <div className="max-w-md mx-auto mt-12 bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative">
       <button onClick={onBack} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
       </button>
-      
+
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></svg>
         </div>
         <h2 className="text-2xl font-bold text-slate-800">委員身分確認</h2>
         <p className="text-slate-500 mt-2">請選擇您的部門與姓名，並輸入代號</p>
@@ -286,9 +286,9 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">部門</label>
-          <select 
-            value={selectedDept} 
-            onChange={handleDeptChange} 
+          <select
+            value={selectedDept}
+            onChange={handleDeptChange}
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
           >
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -296,9 +296,9 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">委員姓名</label>
-          <select 
-            value={selectedName} 
-            onChange={(e) => setSelectedName(e.target.value)} 
+          <select
+            value={selectedName}
+            onChange={(e) => setSelectedName(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
           >
             {currentDeptUsers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -306,15 +306,15 @@ function VoterVerification({ onLogin, onBack }: { onLogin: (user: Committee) => 
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">姓名代號</label>
-          <input 
-            type="text" 
-            inputMode="numeric" 
-            pattern="\d*" 
-            value={code} 
-            onChange={(e) => setCode(e.target.value)} 
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50" 
-            placeholder="請輸入您的專屬數字代號" 
-            required 
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="\d*"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
+            placeholder="請輸入您的專屬數字代號"
+            required
           />
         </div>
         {error && <p className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-lg">{error}</p>}
@@ -387,16 +387,16 @@ function AdminCandidates() {
       alert('請填寫完整資訊');
       return;
     }
-    
+
     try {
       const action = id ? 'updateCandidate' : 'addCandidate';
-      
+
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, id, ...editForm })
       });
-      
+
       const data = await res.json();
       if (data.success) {
         setEditingId(null);
@@ -415,7 +415,7 @@ function AdminCandidates() {
   const handleDelete = async (id: number) => {
     if (!confirm('確定要刪除此候選人嗎？相關的投票紀錄也會受到影響。')) return;
     try {
-      const res = await fetch(GAS_URL, { 
+      const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deleteCandidate', id })
@@ -464,7 +464,7 @@ function AdminCandidates() {
                 <input
                   type="text"
                   value={editForm.department}
-                  onChange={e => setEditForm({...editForm, department: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, department: e.target.value })}
                   className="w-full px-3 py-2 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="例如：生產部"
                 />
@@ -474,7 +474,7 @@ function AdminCandidates() {
                 <input
                   type="text"
                   value={editForm.name}
-                  onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                   className="w-full px-3 py-2 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="輸入姓名"
                 />
@@ -484,7 +484,7 @@ function AdminCandidates() {
               <label className="block text-sm font-medium text-slate-700 mb-1">優良事蹟簡介</label>
               <textarea
                 value={editForm.description}
-                onChange={e => setEditForm({...editForm, description: e.target.value})}
+                onChange={e => setEditForm({ ...editForm, description: e.target.value })}
                 className="w-full px-3 py-2 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
                 placeholder="描述該候選人的優良事蹟..."
               />
@@ -507,15 +507,15 @@ function AdminCandidates() {
               <label className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <Upload className="w-6 h-6 mb-1" />
                 <span className="text-xs font-medium">上傳圖片</span>
-                <input 
-                  type="file" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  className="hidden"
                   accept="image/*"
                   onChange={(e) => handleImageUpload(candidate.id, e)}
                 />
               </label>
             </div>
-            
+
             <div className="flex-1 w-full">
               {editingId === candidate.id ? (
                 <div className="space-y-3">
@@ -523,21 +523,21 @@ function AdminCandidates() {
                     <input
                       type="text"
                       value={editForm.department}
-                      onChange={e => setEditForm({...editForm, department: e.target.value})}
+                      onChange={e => setEditForm({ ...editForm, department: e.target.value })}
                       className="w-full sm:w-1/3 px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="部門"
                     />
                     <input
                       type="text"
                       value={editForm.name}
-                      onChange={e => setEditForm({...editForm, name: e.target.value})}
+                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                       className="w-full sm:w-2/3 px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="姓名"
                     />
                   </div>
                   <textarea
                     value={editForm.description}
-                    onChange={e => setEditForm({...editForm, description: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
                     className="w-full px-3 py-2 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
                     placeholder="優良事蹟簡介"
                   />
@@ -559,7 +559,7 @@ function AdminCandidates() {
                       <h3 className="text-xl font-bold text-slate-800">{candidate.name}</h3>
                     </div>
                     <div className="flex gap-2 self-end sm:self-auto">
-                      <button 
+                      <button
                         onClick={() => {
                           setEditingId(candidate.id);
                           setEditForm({ department: candidate.department, name: candidate.name, description: candidate.description });
@@ -570,7 +570,7 @@ function AdminCandidates() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(candidate.id)}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                         title="刪除"
@@ -607,12 +607,12 @@ function Evaluation({ user }: { user: Committee }) {
           fetch(`${GAS_URL}?action=getCandidates`),
           fetch(`${GAS_URL}?action=getVotes&committee_code=${user.login_code}`)
         ]);
-        
+
         const candData = await candRes.json();
         const voteData = await voteRes.json();
-        
+
         setCandidates(candData);
-        
+
         const initialScores: Record<number, number> = {};
         voteData.forEach((v: any) => {
           initialScores[v.candidate_id] = v.score;
@@ -731,7 +731,7 @@ function Evaluation({ user }: { user: Committee }) {
                 </p>
               </div>
             </div>
-            
+
             {/* Score Selection Section (RWD Optimized) */}
             <div className="w-full md:w-64 flex flex-col justify-center border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
               <p className="text-sm font-bold text-slate-500 mb-3 text-center md:text-left">請選擇評分 (1-5)</p>
@@ -740,7 +740,7 @@ function Evaluation({ user }: { user: Committee }) {
                   const isActive = scores[candidate.id] === score;
                   let baseClass = 'flex-1 aspect-square md:aspect-auto md:h-12 rounded-xl font-bold transition-all flex items-center justify-center text-lg md:text-base ';
                   let colorClass = '';
-                  
+
                   if (isActive) {
                     if (score === 5) colorClass = 'bg-amber-500 text-white shadow-lg ring-4 ring-amber-200 transform scale-110 z-10';
                     else if (score === 4) colorClass = 'bg-emerald-500 text-white shadow-md transform scale-105';
@@ -873,20 +873,31 @@ function Results() {
         .glow-effect .podium-avatar-container { animation: glow 2s infinite; border-radius: 50%; }
       `}</style>
 
+      {/* Floating Music Control - Sticky position for better visibility */}
+      <div className="fixed top-24 right-4 sm:right-6 md:right-10 z-[60]">
+        <button
+          onClick={toggleMusic}
+          className={`group flex items-center gap-2 p-2 sm:p-3 rounded-full shadow-xl transition-all duration-300 border-2 ${isPlaying
+              ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
+              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
+          title={isPlaying ? '暫停音樂' : '播放音樂'}
+        >
+          {isPlaying ? (
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
+              <span className="text-xs font-bold pr-1 hidden sm:inline">音樂播放中</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+              <span className="text-xs font-bold pr-1 hidden sm:inline">點擊播放音樂</span>
+            </div>
+          )}
+        </button>
+      </div>
+
       <div className="mb-12 text-center relative">
-        <div className="absolute right-0 top-0">
-          <button 
-            onClick={toggleMusic}
-            className={`p-2 rounded-full shadow-sm transition-colors flex items-center gap-2 text-sm font-medium ${isPlaying ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            title={isPlaying ? '暫停音樂' : '播放音樂'}
-          >
-            {isPlaying ? (
-              <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg><span className="hidden sm:inline">音樂播放中</span></>
-            ) : (
-              <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span className="hidden sm:inline">音樂已暫停</span></>
-            )}
-          </button>
-        </div>
         <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 mb-4 flex items-center justify-center gap-3">
           <Trophy className="w-8 h-8 md:w-10 md:h-10 text-yellow-500" />
           評選結果排行榜
@@ -894,12 +905,12 @@ function Results() {
         </h2>
         <p className="text-slate-500 text-base md:text-lg">榮耀時刻！感謝所有同仁對安全衛生的貢獻</p>
       </div>
-      
+
       {/* Background Music Audio Element - Using Google Drive Direct Link */}
-      <audio 
-        ref={audioRef} 
-        loop 
-        src="https://docs.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp" 
+      <audio
+        ref={audioRef}
+        loop
+        src="https://docs.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp"
       />
 
       {/* Podium Section */}
@@ -925,7 +936,7 @@ function Results() {
                 <p className="text-[10px] md:text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full mt-1 line-clamp-1">{cand.department}</p>
                 <div className="mt-2 font-black text-lg md:text-2xl text-emerald-600">{cand.total_score} <span className="text-[10px] md:text-sm font-normal text-slate-500">分</span></div>
               </div>
-              
+
               {/* Podium Block */}
               <div className={`w-full ${cand.height} ${cand.color} border-t-4 ${cand.border} rounded-t-xl shadow-inner flex flex-col items-center justify-start pt-4 relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-white/20"></div>
@@ -1005,16 +1016,16 @@ function AdminCommittees() {
       alert('姓名與代號不可為空');
       return;
     }
-    
+
     try {
       const action = id ? 'updateCommittee' : 'addCommittee';
-      
+
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, id, ...editForm })
       });
-      
+
       const data = await res.json();
       if (data.success) {
         setEditingId(null);
@@ -1033,7 +1044,7 @@ function AdminCommittees() {
   const handleDelete = async (id: number) => {
     if (!confirm('確定要刪除此委員嗎？')) return;
     try {
-      const res = await fetch(GAS_URL, { 
+      const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deleteCommittee', id })
@@ -1095,7 +1106,7 @@ function AdminCommittees() {
                     <input
                       type="text"
                       value={editForm.department}
-                      onChange={e => setEditForm({...editForm, department: e.target.value})}
+                      onChange={e => setEditForm({ ...editForm, department: e.target.value })}
                       className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="輸入部門"
                     />
@@ -1104,7 +1115,7 @@ function AdminCommittees() {
                     <input
                       type="text"
                       value={editForm.name}
-                      onChange={e => setEditForm({...editForm, name: e.target.value})}
+                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                       className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="輸入姓名"
                     />
@@ -1115,7 +1126,7 @@ function AdminCommittees() {
                       inputMode="numeric"
                       pattern="\d*"
                       value={editForm.login_code}
-                      onChange={e => setEditForm({...editForm, login_code: e.target.value})}
+                      onChange={e => setEditForm({ ...editForm, login_code: e.target.value })}
                       className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="輸入數字代號"
                     />
@@ -1134,7 +1145,7 @@ function AdminCommittees() {
                       <input
                         type="text"
                         value={editForm.department}
-                        onChange={e => setEditForm({...editForm, department: e.target.value})}
+                        onChange={e => setEditForm({ ...editForm, department: e.target.value })}
                         className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
                     ) : (
@@ -1146,7 +1157,7 @@ function AdminCommittees() {
                       <input
                         type="text"
                         value={editForm.name}
-                        onChange={e => setEditForm({...editForm, name: e.target.value})}
+                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                         className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
                     ) : (
@@ -1160,7 +1171,7 @@ function AdminCommittees() {
                         inputMode="numeric"
                         pattern="\d*"
                         value={editForm.login_code}
-                        onChange={e => setEditForm({...editForm, login_code: e.target.value})}
+                        onChange={e => setEditForm({ ...editForm, login_code: e.target.value })}
                         className="w-full px-3 py-1.5 rounded border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
                     ) : (
@@ -1175,7 +1186,7 @@ function AdminCommittees() {
                       </>
                     ) : (
                       <div className="flex justify-end gap-2">
-                        <button 
+                        <button
                           onClick={() => {
                             setEditingId(committee.id);
                             setEditForm({ department: committee.department || '', name: committee.name, login_code: committee.login_code });
@@ -1187,7 +1198,7 @@ function AdminCommittees() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         {committee.login_code !== 'ADMIN' && (
-                          <button 
+                          <button
                             onClick={() => handleDelete(committee.id)}
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                             title="刪除"
