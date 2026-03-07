@@ -126,7 +126,7 @@ function handleRequest(e, method) {
         result = getCommittees();
         break;
       case 'getCandidates':
-        result = getCandidates();
+        result = getCandidates(data.noImage);
         break;
       case 'login':
         result = login(data.name, data.login_code);
@@ -317,7 +317,7 @@ function getCommittees() {
 }
 
 // 取得候選人清單
-function getCandidates() {
+function getCandidates(noImage) {
   var sheet = getSpreadsheet().getSheetByName('候選人');
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
@@ -327,12 +327,15 @@ function getCandidates() {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     
-    // 組合照片 Base64 (欄位 index 4 開始到陣列尾端)
-    var imgParts = [];
-    for (var j = 4; j < row.length; j++) {
-      if (row[j]) imgParts.push(row[j]);
+    var fullImg = null;
+    if (!noImage) {
+      // 組合照片 Base64 (欄位 index 4 開始到陣列尾端)
+      var imgParts = [];
+      for (var j = 4; j < row.length; j++) {
+        if (row[j]) imgParts.push(row[j]);
+      }
+      fullImg = imgParts.length > 0 ? imgParts.join('') : null;
     }
-    var fullImg = imgParts.length > 0 ? imgParts.join('') : null;
 
     result.push({
       id: row[0] || row[2], // 候選人ID or 姓名
