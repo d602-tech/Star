@@ -315,13 +315,7 @@ function mapVote(row) {
 
 // 取得委員清單（不含密碼）
 function getCommittees() {
-  var cache = CacheService.getScriptCache();
-  var cached = cache.get("COMMITTEES_LIST");
-  if (cached) return JSON.parse(cached);
-
-  var data = getSheetData('委員').map(mapCommitteePublic);
-  cache.put("COMMITTEES_LIST", JSON.stringify(data), 600); // 存 10 分鐘
-  return data;
+  return getSheetData('委員').map(mapCommitteePublic);
 }
 
 // 取得候選人清單
