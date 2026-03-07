@@ -252,13 +252,20 @@ var COMMITTEE_HEADERS = ['委員ID', '部門', '委員姓名', '登入代號(密
 var CANDIDATE_HEADERS = ['候選人ID', '部門', '姓名', '優良事蹟簡介', '照片'];
 var VOTE_HEADERS = ['投票ID', '委員代號', '候選人ID', '分數'];
 
+// 處理部門名稱縮寫的工具函數
+function shortenDepartmentName(name) {
+  if (!name) return '';
+  return name.replace(/工業安全衛生組/g, '工安組').replace(/工作隊/g, '隊');
+}
+
 // 委員：對外不回傳 login_code 明文
 // 但必須回傳前端指定的中文 Key 以確保下拉選單能抓到 '部門' 和 '委員姓名'
 function mapCommitteePublic(row) {
+  var shortDept = shortenDepartmentName(row['部門']);
   return {
     id: row['委員ID'],
-    '部門': row['部門'],
-    department: row['部門'], // 提供英文相容性
+    '部門': shortDept,
+    department: shortDept, // 提供英文相容性
     '委員姓名': row['委員姓名'],
     name: row['委員姓名'] // 提供英文相容性
     // login_code 不回傳！
@@ -266,9 +273,10 @@ function mapCommitteePublic(row) {
 }
 
 function mapCommitteeInternal(row) {
+  var shortDept = shortenDepartmentName(row['部門']);
   return {
     id: row['委員ID'],
-    department: row['部門'],
+    department: shortDept,
     name: row['委員姓名'],
     login_code: row['登入代號(密碼)'] ? row['登入代號(密碼)'].toString() : ''
   };
