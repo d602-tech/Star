@@ -80,7 +80,13 @@ export default function App() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <Trophy className="w-8 h-8 text-yellow-300" />
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">114年度從業人員安全衛生優良事蹟評選</h1>
+            <div className="flex flex-col">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">114年度從業人員安全衛生優良事蹟評選</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs bg-emerald-700 px-2 py-0.5 rounded text-emerald-100 font-mono">v2.3</span>
+                <span className="text-xs text-emerald-200 cursor-help" title="v2.3 更新：支援頒獎音樂播放與成績版面優化">版本說明</span>
+              </div>
+            </div>
           </div>
           
           {user && (
@@ -777,10 +783,11 @@ function Evaluation({ user }: { user: Committee }) {
     </div>
   );
 }
-
 function Results() {
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -799,9 +806,16 @@ function Results() {
 
   useEffect(() => {
     if (!loading && results.length > 0) {
-      // Play victory sound
-      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
-      audio.play().catch(e => console.log('Audio play blocked by browser:', e));
+      if (audioRef.current && isPlaying) {
+        audioRef.current.volume = 0.5;
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.log("Auto-play was prevented by browser. User interaction is needed.", error);
+            setIsPlaying(false);
+          });
+        }
+      }
 
       // Trigger Confetti after 1st place pops up (approx 1.5s)
       setTimeout(() => {
@@ -816,6 +830,16 @@ function Results() {
       }, 1500);
     }
   }, [loading, results.length]);
+
+  const toggleMusic = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(e => console.log('Play blocked', e));
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   if (loading) return <div className="text-center py-12 text-slate-500">載入中...</div>;
 
@@ -849,7 +873,20 @@ function Results() {
         .glow-effect .podium-avatar-container { animation: glow 2s infinite; border-radius: 50%; }
       `}</style>
 
-      <div className="mb-12 text-center">
+      <div className="mb-12 text-center relative">
+        <div className="absolute right-0 top-0">
+          <button 
+            onClick={toggleMusic}
+            className={`p-2 rounded-full shadow-sm transition-colors flex items-center gap-2 text-sm font-medium ${isPlaying ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            title={isPlaying ? '暫停音樂' : '播放音樂'}
+          >
+            {isPlaying ? (
+              <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg><span className="hidden sm:inline">音樂播放中</span></>
+            ) : (
+              <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span className="hidden sm:inline">音樂已暫停</span></>
+            )}
+          </button>
+        </div>
         <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 mb-4 flex items-center justify-center gap-3">
           <Trophy className="w-8 h-8 md:w-10 md:h-10 text-yellow-500" />
           評選結果排行榜
@@ -857,6 +894,13 @@ function Results() {
         </h2>
         <p className="text-slate-500 text-base md:text-lg">榮耀時刻！感謝所有同仁對安全衛生的貢獻</p>
       </div>
+      
+      {/* Background Music Audio Element - Using Google Drive Direct Link */}
+      <audio 
+        ref={audioRef} 
+        loop 
+        src="https://docs.google.com/uc?export=download&id=17MYcOotHEa80azLHazjBUdaKUt3mLtKp" 
+      />
 
       {/* Podium Section */}
       {podiumOrder.length > 0 && (
