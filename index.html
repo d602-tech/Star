@@ -176,11 +176,25 @@
     function VoterLogin({ setView, onLogin }) {
       const [loading, setLoading] = useState(true);
       const [committees, setCommittees] = useState([]);
-      const [step, setStep] = useState(1); // 1: 部門, 2: 姓名, 3: 密碼
+      const [step, setStep] = useState(0); // 0: 共同密碼, 1: 部門, 2: 姓名, 3: 密碼
+      const [sharedPwd, setSharedPwd] = useState('');
       const [dept, setDept] = useState('');
       const [name, setName] = useState('');
       const [code, setCode] = useState('');
       const [err, setErr] = useState('');
+
+      // 部門對應圖示 (簡易版 SVG)
+      const getDeptIcon = (deptName) => {
+        if (deptName.includes('工安') || deptName.includes('安全')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>;
+        if (deptName.includes('工程') || deptName.includes('機電')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
+        if (deptName.includes('行政') || deptName.includes('管理')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>;
+        if (deptName.includes('業務') || deptName.includes('行銷')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>;
+        if (deptName.includes('生產') || deptName.includes('製造')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>;
+        if (deptName.includes('品保') || deptName.includes('檢驗')) return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>;
+
+        // 預設圖示 (群組人像)
+        return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>;
+      };
 
       useEffect(() => {
         apiCall('getCommittees').then(res => {
@@ -191,6 +205,17 @@
 
       const departments = useMemo(() => [...new Set(committees.map(c => c['部門']))], [committees]);
       const availableNames = useMemo(() => committees.filter(c => c['部門'] === dept).map(c => c['委員姓名']), [dept, committees]);
+
+      const handleSharedPwdSubmit = (e) => {
+        e.preventDefault();
+        if (sharedPwd === '0505') {
+          setErr('');
+          setStep(1);
+        } else {
+          setErr('系統進入密碼錯誤，請重新輸入。');
+          setSharedPwd('');
+        }
+      };
 
       const handleLogin = async (e) => {
         e.preventDefault();
@@ -216,12 +241,34 @@
 
             <h2 className="text-3xl font-extrabold text-center mb-2 text-blue-900 tracking-wide">評選委員登入</h2>
             <p className="text-center text-blue-600/80 font-medium mb-8">
+              {step === 0 && '請輸入進入評選系統的密碼'}
               {step === 1 && '請選擇您所屬的部門'}
               {step === 2 && '請點選您的姓名'}
               {step === 3 && '請完成身分驗證'}
             </p>
 
             {err && <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-xl mb-6 text-sm font-bold text-center shadow-sm fade-in">{err}</div>}
+
+            {/* Step 0: 共同密碼驗證 */}
+            {step === 0 && (
+              <form onSubmit={handleSharedPwdSubmit} className="fade-in max-w-sm mx-auto">
+                <div className="mb-8">
+                  <label className="block text-gray-700 text-sm font-bold mb-3 text-center">請輸入系統進入密碼</label>
+                  <input
+                    type="password"
+                    placeholder="請輸入密碼"
+                    className="w-full border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 p-4 rounded-xl text-center text-xl tracking-widest transition bg-white"
+                    value={sharedPwd}
+                    onChange={e => setSharedPwd(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                  確認進入
+                </button>
+              </form>
+            )}
 
             {/* Step 1: 選擇部門 */}
             {step === 1 && (
@@ -233,7 +280,7 @@
                     className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-white to-blue-50 border-2 border-blue-100 hover:border-blue-400 hover:shadow-lg rounded-2xl transition-all transform hover:-translate-y-1 group"
                   >
                     <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                      {getDeptIcon(d)}
                     </div>
                     <span className="font-bold text-gray-700 group-hover:text-blue-900 text-lg">{d}</span>
                   </button>
