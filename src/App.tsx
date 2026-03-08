@@ -599,6 +599,7 @@ function Evaluation({ user }: { user: Committee }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -635,12 +636,15 @@ function Evaluation({ user }: { user: Committee }) {
     setSuccess(false);
   };
 
-  const handleSubmit = async () => {
+  const handlePreSubmit = () => {
     if (Object.keys(scores).length !== candidates.length) {
       alert('請為所有候選人評分！');
       return;
     }
+    setShowConfirm(true);
+  };
 
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const votes = Object.entries(scores).map(([candidateId, score]) => ({
@@ -658,6 +662,7 @@ function Evaluation({ user }: { user: Committee }) {
       if (data.success) {
         setSuccess(true);
         setHasVoted(true);
+        setShowConfirm(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         alert(data.message || '提交失敗');
@@ -773,13 +778,69 @@ function Evaluation({ user }: { user: Committee }) {
 
       <div className="mt-10 flex justify-end">
         <button
-          onClick={handleSubmit}
+          onClick={handlePreSubmit}
           disabled={submitting}
           className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold py-4 px-12 rounded-xl shadow-md transition-colors text-lg flex items-center justify-center gap-2"
         >
           {submitting ? '處理中...' : (hasVoted ? '更新評分結果' : '確認提交評分')}
         </button>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-8 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl scale-in-center">
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/80 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+                確認您的評分
+              </h3>
+              <p className="text-sm text-slate-500 mt-2">請再次確認您給予各候選人的分數，送出後即完成投票。</p>
+            </div>
+
+            <div className="px-5 sm:px-6 py-4 overflow-y-auto flex-1 bg-white stylish-scrollbar">
+              <ul className="space-y-3">
+                {candidates.map((candidate, index) => (
+                  <li key={candidate.id} className="flex justify-between items-center p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-emerald-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+                        {index + 1}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800">{candidate.name}</span>
+                        <span className="text-[10px] text-slate-500">{candidate.department}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-2xl font-black ${scores[candidate.id] >= 4 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                        {scores[candidate.id]}
+                      </span>
+                      <span className="text-sm text-slate-500 font-medium">分</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="p-5 sm:p-6 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={submitting}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                返回修改
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-colors flex items-center justify-center gap-2"
+              >
+                {submitting ? '送出中...' : '確認投下神聖的一票'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -878,8 +939,8 @@ function Results() {
         <button
           onClick={toggleMusic}
           className={`group flex items-center gap-2 p-2 sm:p-3 rounded-full shadow-xl transition-all duration-300 border-2 ${isPlaying
-              ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
-              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
+            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
             }`}
           title={isPlaying ? '暫停音樂' : '播放音樂'}
         >
