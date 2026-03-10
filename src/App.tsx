@@ -355,6 +355,56 @@ function AdminResults() {
     };
   }, []);
 
+  const handleRefreshCache = async () => {
+    if (!confirm('確定要清除系統快取嗎？這將強制所有資料重新從試算表讀取。')) return;
+    setLoading(true);
+    const res = await apiCall('refreshCache', { adminToken: getAdminToken() });
+    if (res?.success) {
+      alert('快取已清除');
+      loadResults();
+    } else {
+      setLoading(false);
+      alert('清除失敗');
+    }
+  };
+
+  const handleClearVotes = async () => {
+    if (!confirm('⚠️ 警告：這將會清除【所有】投票紀錄！\n你確定要執行嗎？')) return;
+    if (!confirm('⚠️ 最終確認：\n清除後資料無法復原，請確認已經匯出備份。\n要繼續清除嗎？')) return;
+    setLoading(true);
+    const res = await apiCall('clearVotes', { adminToken: getAdminToken() });
+    if (res?.success) {
+      alert('已清除所有投票紀錄');
+      loadResults();
+    } else {
+      setLoading(false);
+      alert('清除失敗');
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (results.length === 0) {
+      alert('目前沒有評選結果可匯出');
+      return;
+    }
+    // CSV Header
+    let csvContent = "名次,部門,候選人姓名,總得分,得票數,平均分數\n";
+
+    // Add rows
+    results.forEach((r, idx) => {
+      csvContent += `${idx + 1},${r.department},${r.name},${r.totalScore},${r.voteCount},${r.average}\n`;
+    });
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `評選總成績_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return <Loading />;
 
   const top3 = results.slice(0, 3);
@@ -364,16 +414,22 @@ function AdminResults() {
     <div className="animate-in fade-in duration-400 bg-gradient-to-b from-gray-900 via-gray-800 to-black min-h-[80vh] rounded-3xl p-6 md:p-12 relative overflow-hidden shadow-2xl border border-gray-700">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-500/20 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="relative z-10 flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6">
+      <div className="relative z-10 flex flex-col xl:flex-row justify-between items-center xl:items-end mb-16 gap-6">
         <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 tracking-widest pl-4 border-l-8 border-yellow-500">🏆 評選總排行榜</h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={toggleMusic}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold shadow-lg transition-all duration-300 border-2 ${isPlaying ? 'bg-yellow-500 text-black border-yellow-400 animate-pulse' : 'bg-gray-800 text-yellow-500 border-gray-600'}`}
+            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full font-bold shadow-lg transition-all duration-300 border-2 ${isPlaying ? 'bg-yellow-500 text-black border-yellow-400 animate-pulse' : 'bg-gray-800 text-yellow-500 border-gray-600'}`}
           >
             {isPlaying ? <span>🎵 頒獎音樂播放中</span> : <span>🔇 音樂已暫停</span>}
           </button>
-          <button onClick={loadResults} className="text-gray-300 hover:text-white bg-gray-800/80 px-6 py-2 rounded-lg border border-gray-600 backdrop-blur-md shadow-lg transition font-bold">重新整理</button>
+
+          <div className="flex bg-gray-800/80 rounded-lg border border-gray-600 shadow-lg overflow-hidden backdrop-blur-md">
+            <button onClick={loadResults} className="text-gray-300 hover:text-white hover:bg-gray-700 px-4 py-2 border-r border-gray-600 transition font-bold text-sm">更新資料</button>
+            <button onClick={handleRefreshCache} className="text-blue-300 hover:text-white hover:bg-blue-900/50 px-4 py-2 border-r border-gray-600 transition font-bold text-sm">清除系統快取</button>
+            <button onClick={handleExportCSV} className="text-green-400 hover:text-white hover:bg-green-900/50 px-4 py-2 border-r border-gray-600 transition font-bold text-sm">匯出 CSV</button>
+            <button onClick={handleClearVotes} className="text-red-400 hover:text-white hover:bg-red-900/80 px-4 py-2 transition font-bold text-sm">清除所有投票</button>
+          </div>
         </div>
       </div>
 

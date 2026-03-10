@@ -183,6 +183,14 @@ function handleRequest(e, method) {
         verifyAdmin(data.adminToken);
         result = deleteCommittee(data.id);
         break;
+      case 'clearVotes':
+        verifyAdmin(data.adminToken);
+        result = clearVotes();
+        break;
+      case 'refreshCache':
+        verifyAdmin(data.adminToken);
+        result = refreshCache();
+        break;
       case 'adminLogout':
         verifyAdmin(data.adminToken);
         revokeAdminToken();
@@ -681,9 +689,29 @@ function deleteCommittee(id) {
   return { success: false, message: '找不到該委員' };
 }
 
+function clearVotes() {
+  var sheet = getSpreadsheet().getSheetByName('投票紀錄');
+  if (!sheet) return { success: false, message: '找不到投票紀錄工作表' };
+  
+  // 保留第一列標題，清除第二列以後所有的資料
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+  return { success: true };
+}
+
+function refreshCache() {
+  var cache = CacheService.getScriptCache();
+  cache.remove("COMMITTEES_LIST");
+  cache.remove("CANDIDATES_LIST");
+  return { success: true };
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 初始化
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 function setupSheets() {
   getSheet('委員', COMMITTEE_HEADERS);
   getSheet('候選人', CANDIDATE_HEADERS);
