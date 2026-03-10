@@ -456,14 +456,25 @@ function voterLogout(sessionToken) {
 function getResults() {
   var candidates = getCandidates();
   var allVotes = getSheetData('投票紀錄').map(mapVote);
+  var committees = getSheetData('委員').map(mapCommitteeInternal);
+
+  // 取得目前所有有效委員的登入代號 (過濾掉引號)
+  var validCommitteeCodes = committees.map(function(c) {
+    return String(c.login_code).replace(/^'/, '');
+  });
 
   // 1. 修正重複投票只算一次 (以委員代號 + 候選人ID 取最新的一筆)
+  // 同時過濾掉「不是現有委員」的幽靈選票
   var uniqueVotesMap = {};
   allVotes.forEach(function(v) {
     if (v.committee_code && v.candidate_id) {
       // 處理因前導零附加上的單引號，確保比對一致
       var cleanCode = String(v.committee_code).replace(/^'/, '');
-      uniqueVotesMap[cleanCode + '_' + v.candidate_id] = v;
+      
+      // 如果這張票的擁有者還在委員名單內，才納入計算
+      if (validCommitteeCodes.indexOf(cleanCode) !== -1) {
+        uniqueVotesMap[cleanCode + '_' + v.candidate_id] = v;
+      }
     }
   });
   var votes = Object.keys(uniqueVotesMap).map(function(k) { return uniqueVotesMap[k]; });
