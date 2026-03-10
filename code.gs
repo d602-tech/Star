@@ -421,8 +421,14 @@ function submitVote(sessionToken, votes) {
     }
   }
 
-  // 2. 加入此委員最新的成績
+  // 2. 加入此委員最新的成績 (確保不重複)
+  var uniqueVotes = {};
   votes.forEach(function (vote) {
+    uniqueVotes[vote.candidateId] = vote;
+  });
+
+  Object.keys(uniqueVotes).forEach(function(key) {
+    var vote = uniqueVotes[key];
     newData.push([
       new Date().getTime() + Math.floor(Math.random() * 1000), // 隨機避免 ID 衝突
       committeeCode,
@@ -449,7 +455,16 @@ function voterLogout(sessionToken) {
 
 function getResults() {
   var candidates = getCandidates();
-  var votes = getSheetData('投票紀錄').map(mapVote);
+  var allVotes = getSheetData('投票紀錄').map(mapVote);
+
+  // 1. 修正重複投票只算一次 (以委員代號 + 候選人ID 取最新的一筆)
+  var uniqueVotesMap = {};
+  allVotes.forEach(function(v) {
+    if (v.committee_code && v.candidate_id) {
+      uniqueVotesMap[v.committee_code + '_' + v.candidate_id] = v;
+    }
+  });
+  var votes = Object.keys(uniqueVotesMap).map(function(k) { return uniqueVotesMap[k]; });
 
   var results = candidates.map(function (candidate) {
     var cv = votes.filter(function (v) { return String(v.candidate_id) === String(candidate.id); });
@@ -473,8 +488,17 @@ function getResults() {
 
 function getVotingStatus() {
   var committees = getSheetData('委員').map(mapCommitteeInternal);
-  var votes = getSheetData('投票紀錄').map(mapVote);
+  var allVotes = getSheetData('投票紀錄').map(mapVote);
   var candidates = getCandidates();
+
+  // 1. 修正重複投票只算一次
+  var uniqueVotesMap = {};
+  allVotes.forEach(function(v) {
+    if (v.committee_code && v.candidate_id) {
+      uniqueVotesMap[v.committee_code + '_' + v.candidate_id] = v;
+    }
+  });
+  var votes = Object.keys(uniqueVotesMap).map(function(k) { return uniqueVotesMap[k]; });
 
   var statusList = committees.map(function (c) {
     // 找出該委員的所有投票
@@ -584,7 +608,12 @@ function addCommittee(data) {
   var sheet = getSpreadsheet().getSheetByName('委員');
   if (!sheet) return { success: false, message: '找不到委員工作表' };
   var id = new Date().getTime();
-  sheet.appendRow([id, data.department, data.name, data.login_code]);
+  
+  // 修改代碼改為文字避免數字第1個為0
+  var loginCodeStr = typeof data.login_code !== 'undefined' ? String(data.login_code) : '';
+  var formattedCode = loginCodeStr ? "'" + loginCodeStr : "";
+  
+  sheet.appendRow([id, data.department, data.name, formattedCode]);
   return { success: true, id: id };
 }
 
@@ -596,7 +625,10 @@ function updateCommittee(data) {
     if (rows[i][0] == data.id) {
       sheet.getRange(i + 1, 2).setValue(data.department);
       sheet.getRange(i + 1, 3).setValue(data.name);
-      if (data.login_code) sheet.getRange(i + 1, 4).setValue(data.login_code);
+      if (typeof data.login_code !== 'undefined' && data.login_code !== '') {
+        var loginCodeStr = String(data.login_code);
+        sheet.getRange(i + 1, 4).setValue("'" + loginCodeStr);
+      }
       return { success: true };
     }
   }
