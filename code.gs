@@ -461,7 +461,9 @@ function getResults() {
   var uniqueVotesMap = {};
   allVotes.forEach(function(v) {
     if (v.committee_code && v.candidate_id) {
-      uniqueVotesMap[v.committee_code + '_' + v.candidate_id] = v;
+      // 處理因前導零附加上的單引號，確保比對一致
+      var cleanCode = String(v.committee_code).replace(/^'/, '');
+      uniqueVotesMap[cleanCode + '_' + v.candidate_id] = v;
     }
   });
   var votes = Object.keys(uniqueVotesMap).map(function(k) { return uniqueVotesMap[k]; });
@@ -495,14 +497,19 @@ function getVotingStatus() {
   var uniqueVotesMap = {};
   allVotes.forEach(function(v) {
     if (v.committee_code && v.candidate_id) {
-      uniqueVotesMap[v.committee_code + '_' + v.candidate_id] = v;
+      var cleanCode = String(v.committee_code).replace(/^'/, '');
+      uniqueVotesMap[cleanCode + '_' + v.candidate_id] = v;
     }
   });
   var votes = Object.keys(uniqueVotesMap).map(function(k) { return uniqueVotesMap[k]; });
 
   var statusList = committees.map(function (c) {
-    // 找出該委員的所有投票
-    var cv = votes.filter(function (v) { return String(v.committee_code) === String(c.login_code); });
+    // 找出該委員的所有投票, 同樣對 c.login_code 清理單引號
+    var cleanLoginCode = String(c.login_code).replace(/^'/, '');
+    var cv = votes.filter(function (v) { 
+      var vClean = String(v.committee_code).replace(/^'/, '');
+      return vClean === cleanLoginCode;
+    });
     
     // 整理投票明細，把候選人名稱跟分數配對
     var voteDetails = cv.map(function(v) {
