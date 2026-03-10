@@ -483,6 +483,20 @@ function getResults() {
     var cv = votes.filter(function (v) { return String(v.candidate_id) === String(candidate.id); });
     var total = cv.reduce(function (s, v) { return s + Number(v.score); }, 0);
     var avg = cv.length > 0 ? (total / cv.length).toFixed(2) : '0.00';
+    
+    // 整理這名候選人得票的組成明細
+    var voteDetails = cv.map(function(v) {
+      var vClean = String(v.committee_code).replace(/^'/, '');
+      var committee = committees.find(function(c) { 
+        return String(c.login_code).replace(/^'/, '') === vClean; 
+      });
+      return {
+        voterName: committee ? committee.name : '未知委員',
+        department: committee ? committee.department : '未知部門',
+        score: Number(v.score)
+      };
+    });
+
     return {
       id: candidate.id,
       department: candidate.department,
@@ -491,7 +505,8 @@ function getResults() {
       image_url: candidate.image_url,
       totalScore: total,
       voteCount: cv.length,
-      average: avg
+      average: avg,
+      voteDetails: voteDetails // 新增傳回得票組成
     };
   });
 

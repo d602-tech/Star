@@ -287,7 +287,8 @@ function AdminPanel({ setView }: { setView: (v: string) => void }) {
           </div>
           <div className="flex space-x-2">
             <button onClick={() => setTab('results')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'results' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>排行榜</button>
-            <button onClick={() => setTab('votingStatus')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'votingStatus' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>投票狀況</button>
+            <button onClick={() => setTab('votingStatus')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'votingStatus' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>投票進度</button>
+            <button onClick={() => setTab('candidateVotes')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'candidateVotes' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>候選人得票組成</button>
             <button onClick={() => setTab('candidates')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'candidates' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>候選人管理</button>
             <button onClick={() => setTab('committees')} className={`px-4 py-2 rounded-md font-medium transition ${tab === 'committees' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>委員管理</button>
             <button onClick={handleLogout} className="px-4 py-2 rounded-md font-medium bg-red-600 hover:bg-red-700 transition ml-4">登出</button>
@@ -297,6 +298,7 @@ function AdminPanel({ setView }: { setView: (v: string) => void }) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {tab === 'results' && <AdminResults />}
         {tab === 'votingStatus' && <AdminVotingStatus />}
+        {tab === 'candidateVotes' && <AdminCandidateVotes />}
         {tab === 'candidates' && <AdminCandidates />}
         {tab === 'committees' && <AdminCommittees />}
       </div>
@@ -584,17 +586,119 @@ function AdminCandidates() {
 function AdminCommittees() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
   const loadData = () => { setLoading(true); apiCall('getCommittees').then(res => { if (res) setData(res); setLoading(false); }); };
   useEffect(() => { loadData(); }, []);
-  const handleDelete = async (id: number) => { if (confirm('確認？')) { const res = await apiCall('deleteCommittee', { id, adminToken: getAdminToken() }); if (res?.success) loadData(); } };
+
+  const handleDelete = async (id: number) => { if (confirm('確認刪除該委員？')) { const res = await apiCall('deleteCommittee', { id, adminToken: getAdminToken() }); if (res?.success) loadData(); } };
+
+  const handleAdd = async () => {
+    const dept = prompt('請輸入委員所屬部門:'); if (!dept) return;
+    const name = prompt('請輸入委員姓名:'); if (!name) return;
+    const loginCode = prompt('請輸入 4 碼登入代號 (例如 0123):'); if (!loginCode) return;
+    const res = await apiCall('addCommittee', { department: dept, name, login_code: loginCode, adminToken: getAdminToken() });
+    if (res?.success) { alert('新增成功'); loadData(); }
+  };
+
+  const handleEdit = async (c: any) => {
+    const dept = prompt('修改部門:', c.department) ?? c.department;
+    const name = prompt('修改姓名:', c.name) ?? c.name;
+    const loginCode = prompt('修改登入代號 (需重新輸入新代號):', '');
+
+    const payload: any = { id: c.id, department: dept, name, adminToken: getAdminToken() };
+    if (loginCode) payload.login_code = loginCode;
+
+    const res = await apiCall('updateCommittee', payload);
+    if (res?.success) { alert('修改成功'); loadData(); }
+  };
+
   if (loading) return <Loading />;
   return (
     <div className="bg-white p-6 rounded-xl shadow border animate-in fade-in duration-400">
-      <h2 className="text-2xl font-bold mb-6">委員名單</h2>
-      <table className="w-full text-left">
-        <thead className="bg-gray-50 border-b"><tr><th className="p-4">部門</th><th className="p-4">姓名</th><th className="p-4">狀態</th><th className="p-4">操作</th></tr></thead>
-        <tbody className="divide-y">{data.map(c => <tr key={c.id}><td className="p-4">{c.department}</td><td className="p-4">{c.name}</td><td className="p-4 text-green-600 font-bold">✔ 設定</td><td className="p-4"><button onClick={() => handleDelete(c.id)} className="text-red-500 font-bold">刪除</button></td></tr>)}</tbody>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">委員名單與代號管理</h2>
+        <button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold shadow transition">+ 新增委員</button>
+      </div>
+      <table className="w-full text-left border-collapse">
+        <thead className="bg-gray-100 border-b-2 border-gray-200">
+          <tr><th className="p-4 font-black text-gray-700">部門</th><th className="p-4 font-black text-gray-700">姓名</th><th className="p-4 font-black text-gray-700 text-center">操作</th></tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {data.map(c => (
+            <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+              <td className="p-4 font-bold text-gray-800">{c.department}</td>
+              <td className="p-4 font-bold text-gray-800">{c.name}</td>
+              <td className="p-4 flex justify-center gap-2">
+                <button onClick={() => handleEdit(c)} className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded font-bold border border-blue-200 transition">📝 編輯</button>
+                <button onClick={() => handleDelete(c.id)} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 rounded font-bold border border-red-200 transition">🗑 刪除</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
+    </div>
+  );
+}
+
+function AdminCandidateVotes() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = () => { setLoading(true); apiCall('getResults', { adminToken: getAdminToken() }).then(res => { if (res) setData(res); setLoading(false); }); };
+  useEffect(() => { loadData(); }, []);
+
+  if (loading) return <Loading />;
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow border animate-in fade-in duration-400">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">📊 候選人得票組成</h2>
+          <p className="text-gray-500 text-sm mt-1">查看每位候選人各自獲得各部門多少分數</p>
+        </div>
+        <button onClick={loadData} className="mt-4 md:mt-0 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold border border-blue-200">🔄 重新整理</button>
+      </div>
+
+      <div className="space-y-6">
+        {data.map(cand => (
+          <div key={cand.id} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition">
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-b">
+              <div className="flex items-center gap-4">
+                {cand.image_url ? <img src={cand.image_url} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" alt={cand.name} /> : <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center font-bold text-white shadow-sm">{cand.name[0]}</div>}
+                <div>
+                  <div className="font-black text-xl text-gray-800">{cand.name}</div>
+                  <div className="text-sm text-gray-500">{cand.department}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-black text-blue-700">{cand.totalScore} <span className="text-sm text-gray-500 font-normal">總分</span></div>
+                <div className="text-xs text-gray-500 mt-1">獲 {cand.voteCount} 票 (平均: {cand.average})</div>
+              </div>
+            </div>
+            <div className="p-6 bg-white min-h-[100px]">
+              {cand.voteDetails && cand.voteDetails.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {cand.voteDetails
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .map((vd: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-500">{vd.department}</span>
+                          <span className="text-sm font-bold text-gray-800">{vd.voterName}</span>
+                        </div>
+                        <span className="font-black text-blue-700 text-lg">{vd.score} 分</span>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 italic">
+                  目前尚未有任何投票紀錄
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
